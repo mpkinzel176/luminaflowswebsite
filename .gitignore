@@ -1,0 +1,8 @@
+# Large source files not used by the site (kept on disk, out of the deploy)
+services/
+# Unreferenced root-level logo copies (site uses assets/)
+/Lumina Flows Logo*.png
+# Local tooling / OS
+.DS_Store
+Thumbs.db
+_*.html
