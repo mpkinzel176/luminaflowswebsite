@@ -44,7 +44,7 @@
   let C = null;
   const arrows = [];
   const cells = [];
-  const layers = { wind: [], precip: [], cad: [], assets: [] };
+  const layers = { wind: [], precip: [], cad: [], assets: [], rocket: [] };
   let radarLayer = null;
 
   const nearest = (lat, lon) => {
@@ -330,6 +330,7 @@
           cylinder: { length: 16, topRadius: 0, bottomRadius: 5, material: C.Color.fromCssColorString("#e8f1f8") },
         });
         layers.cad.push(body, nose);
+        layers.rocket.push(body, nose);
       }
       label(S.lat, S.lon, name, 130, 60000);
     };
@@ -367,47 +368,12 @@
     );
     label(28.596, -80.619, "Crawlerway (approx.)", 20, 30000);
 
-    // Tracked LuminaBox asset moving along the corridor
-    const pts = CRAWLERWAY.slice(0, 4).map(([la, lo]) => C.Cartesian3.fromDegrees(lo, la, 12));
-    const seg = [];
-    let total = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const d = C.Cartesian3.distance(pts[i - 1], pts[i]);
-      seg.push(d);
-      total += d;
-    }
-    const at = (u) => {
-      let d = u * total;
-      for (let i = 0; i < seg.length; i++) {
-        if (d <= seg[i]) return C.Cartesian3.lerp(pts[i], pts[i + 1], d / seg[i], new C.Cartesian3());
-        d -= seg[i];
-      }
-      return pts[pts.length - 1];
-    };
-    const asset = viewer.entities.add({
-      position: new C.CallbackProperty(() => {
-        const t = (Date.now() / 60000) % 2;
-        return at(t < 1 ? t : 2 - t);
-      }, false),
-      point: { pixelSize: 11, color: C.Color.fromCssColorString("#41b7e3"), outlineColor: C.Color.WHITE, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
-      label: {
-        text: "LuminaBox LB-207",
-        font: "600 12px Inter, system-ui, sans-serif",
-        fillColor: C.Color.WHITE,
-        outlineColor: C.Color.fromCssColorString("#06121f"),
-        outlineWidth: 4,
-        style: C.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new C.Cartesian2(0, -16),
-        verticalOrigin: C.VerticalOrigin.BOTTOM,
-        distanceDisplayCondition: new C.DistanceDisplayCondition(0, 30000),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      },
-    });
-    layers.assets.push(asset);
+    // Tracked LuminaBox assets (TEU scenarios) are built in lumina-tracking.js
   }
 
   function fly(key, instant) {
     if (!viewer) return;
+    window.dispatchEvent(new Event("twin:prefly"));
     const s = SITES[key];
     const target = C.Cartesian3.fromDegrees(s.lon, s.lat, key === "all" ? 0 : 40);
     viewer.camera.flyToBoundingSphere(new C.BoundingSphere(target, 1), {
@@ -419,7 +385,7 @@
   async function initViewer() {
     C = window.Cesium;
     viewer = new C.Viewer(box, {
-      baseLayer: new C.ImageryLayer(new C.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/" })),
+      baseLayer: new C.ImageryLayer(new C.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/", maximumLevel: 19 })),
       baseLayerPicker: false,
       geocoder: false,
       homeButton: false,
@@ -438,7 +404,7 @@
     viewer.scene.globe.baseColor = C.Color.fromCssColorString("#0a1c2f");
     viewer.scene.backgroundColor = C.Color.fromCssColorString("#06121f");
     const ctl = viewer.scene.screenSpaceCameraController;
-    ctl.minimumZoomDistance = 120;
+    ctl.minimumZoomDistance = 25;
     ctl.maximumZoomDistance = 160000;
 
     // NOAA MRMS radar (latest), toggled by layer switch
@@ -461,6 +427,17 @@
     loading.remove();
     applyLayers();
     updateScene();
+    window.twinApi = {
+      viewer,
+      Cesium: C,
+      SITES,
+      CRAWLERWAY,
+      layers,
+      getWx: () => wx,
+      getHour: () => hour,
+      nearest,
+    };
+    window.dispatchEvent(new CustomEvent("twin:ready", { detail: window.twinApi }));
   }
 
   function applyLayers() {

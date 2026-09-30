@@ -497,9 +497,10 @@
             <h2 id="twin-title">See the forecast on the facility, not just on the map.</h2>
             <p>
               A 3D geospatial twin of the Kennedy Space Center and Cape Canaveral area, connected to open-source weather
-              prediction data. Forecast winds and precipitation are projected onto facility massing, roads, and tracked
-              assets, so you can see which assets and work areas are affected, and when. Drag to orbit, scroll to zoom,
-              and step through the next 48 hours.
+              prediction data. Forecast winds and precipitation are projected onto facility massing, roads, and
+              LuminaBox-tracked TEU containers, so you can see which assets and work areas are affected, and when.
+              Switch between road transit, warehouse inventory, and a notional rocket-cargo delivery to Japan. Drag to
+              orbit, scroll to zoom.
             </p>
           </div>
 
@@ -530,7 +531,7 @@
                 <label><input type="checkbox" data-layer="precip" checked /><span>Precipitation forecast</span></label>
                 <label><input type="checkbox" data-layer="radar" /><span>NOAA radar (latest)</span></label>
                 <label><input type="checkbox" data-layer="cad" checked /><span>Facility 3D massing</span></label>
-                <label><input type="checkbox" data-layer="assets" checked /><span>Tracked asset</span></label>
+                <label><input type="checkbox" data-layer="assets" checked /><span>LuminaBox tracking</span></label>
               </div>
             </div>
 
@@ -539,10 +540,38 @@
                 <span id="stage-site">Site overview</span>
                 <span class="console-tag" id="data-badge">Loading data…</span>
               </div>
-              <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays">
-                <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
+              <div class="scenario-tabs" role="tablist" aria-label="LuminaBox tracking scenarios">
+                <span class="tabs-label">LuminaBox tracking</span>
+                <button class="stab is-active" role="tab" aria-selected="true" data-scn="road" type="button">Road transit</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="warehouse" type="button">Warehouse</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
               </div>
-              <div class="stage-controls">
+              <div class="cesium-wrap">
+                <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
+                  <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
+                </div>
+                <div class="lb-overlay" id="lb-overlay" hidden>
+                  <div class="lb-card">
+                    <div class="lb-head"><span class="lb-dot"></span><b id="lb-title">LuminaBox LB-207</b></div>
+                    <div class="lb-sub" id="lb-sub">Tracking 1 TEU</div>
+                    <ul class="lb-legend" aria-label="Map legend">
+                      <li><i class="lg lg-asset"></i>TEU tracked by a LuminaBox</li>
+                      <li><i class="lg lg-link"></i>Uplink to base station</li>
+                      <li><i class="lg lg-bs"></i>Base station</li>
+                    </ul>
+                    <button class="lb-follow" id="lb-follow" type="button" aria-pressed="false">Follow asset</button>
+                  </div>
+                  <div class="lb-chip" id="lb-chip"></div>
+                </div>
+              </div>
+              <ol class="phase-row" id="phase-row" hidden></ol>
+              <div class="stage-controls" id="ctl-mission" hidden>
+                <label for="mission-t">Mission timeline</label>
+                <input id="mission-t" type="range" min="0" max="1000" step="1" value="0" />
+                <output id="mission-out">T+00:00</output>
+                <button id="mission-play" type="button" aria-pressed="false">Play</button>
+              </div>
+              <div class="stage-controls" id="ctl-forecast">
                 <label for="hour">Forecast time</label>
                 <input id="hour" type="range" min="0" max="47" step="1" value="0" />
                 <output id="hour-out">Now</output>
@@ -552,6 +581,11 @@
             </div>
 
             <div class="twin-readout" aria-live="polite">
+              <section class="lb-feed" id="lb-feed" aria-live="polite">
+                <h3 class="side-title"><span class="lb-dot"></span>LuminaBox feed</h3>
+                <div id="lb-feed-body"></div>
+              </section>
+              <div id="wx-readout">
               <h3 class="side-title">Operational readout</h3>
               <p class="readout-site" id="r-site">Site overview</p>
               <p class="readout-time" id="r-time">-</p>
@@ -573,10 +607,12 @@
 
               <ul class="status-list" id="status-list"></ul>
               <p class="retask" id="retask"></p>
+              </div>
               <p class="fine" id="src-note">
                 Weather: Open-Meteo open forecast API (open national models). Radar: NOAA MRMS. Imagery: OpenStreetMap
                 contributors. Facility footprints and heights are approximate massing for concept demonstration, not
-                survey or CAD data. Status thresholds are illustrative. Not for operational use.
+                survey or CAD data. LuminaBox telemetry, container contents, the warehouse, and the Japan delivery
+                trajectory are simulated for illustration. Status thresholds are illustrative. Not for operational use.
               </p>
             </div>
           </div>
@@ -730,5 +766,6 @@
     <script src="script.js"></script>
     <script src="platform.js"></script>
     <script src="twin3d.js"></script>
+    <script src="lumina-tracking.js"></script>
   </body>
 </html>
