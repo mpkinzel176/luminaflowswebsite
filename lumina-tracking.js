@@ -211,188 +211,657 @@
     const kv = (k, v, cls) => '<div class="kv' + (cls ? " " + cls : "") + '"><span>' + k + "</span><b>" + v + "</b></div>";
 
     /* =====================================================================
-       (a) ROAD TRANSIT
+       Time history store + SVG chart (per-TEU traces with event markers)
        ===================================================================== */
-    const rp = CRAWLERWAY.slice(0, 4);
-    const rc = rp.map(([la, lo]) => cart(la, lo, 0));
-    const rcum = [0];
-    for (let i = 1; i < rc.length; i++) rcum.push(rcum[i - 1] + C.Cartesian3.distance(rc[i - 1], rc[i]));
-    const rTotal = rcum[rcum.length - 1];
-    function roadAt(f) {
-      const d = f * rTotal;
-      let i = 1;
-      while (i < rcum.length - 1 && d > rcum[i]) i++;
-      const k = (d - rcum[i - 1]) / (rcum[i] - rcum[i - 1]);
-      const la = rp[i - 1][0] + (rp[i][0] - rp[i - 1][0]) * k;
-      const lo = rp[i - 1][1] + (rp[i][1] - rp[i - 1][1]) * k;
-      const brg = (Math.atan2((rp[i][1] - rp[i - 1][1]) * Math.cos((la * Math.PI) / 180), rp[i][0] - rp[i - 1][0]) * 180) / Math.PI;
-      return { la, lo, brg };
+    const HN = 260;
+    const hist = {};
+    const HS = (id) => hist[id] || (hist[id] = { s: [], ev: [] });
+    function hpush(id, s) {
+      const h = HS(id);
+      h.s.push(s);
+      if (h.s.length > HN) h.s.shift();
     }
-    const ROAD_PERIOD = 70; // s per one-way run (time-lapse 10x)
-    const BUMPS = [0.31, 0.66];
-    const road = {
-      f: 0, dir: 1, speed: 0, vib: 0.05, shock: 0, shockUntil: 0, temp: 27, rh: 55,
-      hit: [false, false], flagged: [false, false], pFlat: null, pTeu: null, pTop: null, q: null, dist: 0,
+    function hevent(id, e) {
+      const h = HS(id);
+      h.ev.push(e);
+      if (h.ev.length > 30) h.ev.shift();
+    }
+    const spanTxt = (sec) => (sec >= 7200 ? (sec / 3600).toFixed(1) + " h" : sec >= 120 ? Math.round(sec / 60) + " min" : Math.round(sec) + " s");
+
+    function chart(o) {
+      const W = 268;
+      const Hh = o.h || 92;
+      const L = 30;
+      const R = 6;
+      const Tp = 6;
+      const B = 16;
+      const pw = W - L - R;
+      const ph = Hh - Tp - B;
+      const x0 = o.xr[0];
+      const x1 = o.xr[1];
+      const y0 = o.yr[0];
+      const y1 = o.yr[1];
+      const X = (x) => L + ((x - x0) / (x1 - x0 || 1)) * pw;
+      const Y = (y) => Tp + (1 - (clamp(y, y0, y1) - y0) / (y1 - y0 || 1)) * ph;
+      let g = "";
+      (o.bands || []).forEach((b) => {
+        const bx = X(b.x0);
+        g += '<rect x="' + bx.toFixed(1) + '" y="' + Tp + '" width="' + Math.max(0, X(b.x1) - bx).toFixed(1) + '" height="' + ph + '" fill="' + b.fill + '"/>';
+        if (b.label) g += '<text x="' + (bx + 2).toFixed(1) + '" y="' + (Tp + 8) + '" class="hc-band">' + b.label + "</text>";
+      });
+      [0, 0.5, 1].forEach((f) => {
+        const yv = y0 + (y1 - y0) * f;
+        const yy = Y(yv);
+        g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" class="hc-grid"/><text x="' + (L - 3) + '" y="' + (yy + 3).toFixed(1) + '" class="hc-tick" text-anchor="end">' + (o.yfmt ? o.yfmt(yv) : yv.toFixed(1)) + "</text>";
+      });
+      (o.thresholds || []).forEach((t) => {
+        const yy = Y(t.y);
+        g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" stroke="' + t.color + '" stroke-dasharray="4 3" stroke-width="1"/><text x="' + (W - R - 2) + '" y="' + (yy - 2).toFixed(1) + '" class="hc-thr" fill="' + t.color + '" text-anchor="end">' + t.label + "</text>";
+      });
+      (o.series || []).forEach((s) => {
+        const pts = s.pts;
+        if (!pts.length) return;
+        const d = (arr) => arr.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join("");
+        if (s.upto != null) {
+          g += '<path d="' + d(pts) + '" fill="none" stroke="' + s.color + '" stroke-opacity="0.28" stroke-width="1.4"/>';
+          const part = pts.filter((p) => p[0] <= s.upto);
+          if (part.length > 1) g += '<path d="' + d(part) + '" fill="none" stroke="' + s.color + '" stroke-width="1.8"/>';
+        } else {
+          g += '<path d="' + d(pts) + '" fill="none" stroke="' + s.color + '" stroke-width="1.6" stroke-linejoin="round"/>';
+        }
+      });
+      (o.events || []).forEach((e) => {
+        if (e.x < x0 || e.x > x1) return;
+        g += '<circle cx="' + X(e.x).toFixed(1) + '" cy="' + Y(e.y).toFixed(1) + '" r="3.6" fill="' + (e.color || "#ff6b5b") + '" stroke="#fff" stroke-width="1"/>';
+      });
+      if (o.cursor != null) g += '<line x1="' + X(o.cursor).toFixed(1) + '" x2="' + X(o.cursor).toFixed(1) + '" y1="' + Tp + '" y2="' + (Tp + ph) + '" stroke="#ffdf3c" stroke-width="1.4"/>';
+      if (o.xl) g += '<text x="' + L + '" y="' + (Hh - 3) + '" class="hc-tick">' + o.xl[0] + '</text><text x="' + (W - R) + '" y="' + (Hh - 3) + '" class="hc-tick" text-anchor="end">' + o.xl[1] + "</text>";
+      return '<svg class="hchart" viewBox="0 0 ' + W + " " + Hh + '" ' + (o.attrs || "") + ' role="img" aria-label="' + (o.aria || "history chart") + '">' + g + "</svg>";
+    }
+    // Rolling chart of one stored series for a TEU id
+    function rollChart(id, key, o) {
+      const h = HS(id);
+      const s = h.s;
+      if (s.length < 2) return '<div class="hc-empty">collecting history…</div>';
+      const x0 = s[0].w;
+      const x1 = s[s.length - 1].w;
+      return chart(
+        Object.assign(
+          {
+            xr: [x0, x1 + 1e-6],
+            series: [{ pts: s.map((p) => [p.w, p[key]]), color: o.color || "#41b7e3" }],
+            events: h.ev.filter((e) => e.kind === o.kind || !o.kind).map((e) => ({ x: e.w, y: e.y, color: e.color })),
+            xl: ["−" + spanTxt(x1 - x0), "now"],
+          },
+          o
+        )
+      );
+    }
+    const hcBlock = (title, svg) => '<div class="hc"><div class="hc-title">' + title + "</div>" + svg + "</div>";
+
+    /* =====================================================================
+       (a) ROAD TRANSIT on the real Kennedy Space Center road network (OpenStreetMap)
+       Convoy: Logistics Facility -> VAB. Six TEUs are integrated into the launch vehicle,
+       which rolls out on the Crawlerway to Pad A. Pad B traffic shares the roads.
+       ===================================================================== */
+    const KS = window.KSC;
+    const COSL = Math.cos((28.58 * Math.PI) / 180);
+    function mkPath(pts) {
+      const c = pts.map(([la, lo]) => cart(la, lo, 0));
+      const cum = [0];
+      for (let i = 1; i < c.length; i++) cum.push(cum[i - 1] + C.Cartesian3.distance(c[i - 1], c[i]));
+      return { pts, c, cum, total: cum[cum.length - 1] };
+    }
+    function pathAt(P, s) {
+      const d = clamp(s, 0, P.total);
+      let i = 1;
+      while (i < P.cum.length - 1 && d > P.cum[i]) i++;
+      const k = (d - P.cum[i - 1]) / (P.cum[i] - P.cum[i - 1] || 1);
+      const a = P.pts[i - 1];
+      const b = P.pts[i];
+      const la = a[0] + (b[0] - a[0]) * k;
+      const lo = a[1] + (b[1] - a[1]) * k;
+      return { la, lo, brg: (Math.atan2((b[1] - a[1]) * COSL, b[0] - a[0]) * 180) / Math.PI };
+    }
+    function projectPath(P, ll) {
+      let best = 1e18;
+      let bs = 0;
+      for (let i = 1; i < P.pts.length; i++) {
+        const a = P.pts[i - 1];
+        const b = P.pts[i];
+        const ax = a[1] * COSL, ay = a[0], bx = b[1] * COSL, by = b[0], px = ll[1] * COSL, py = ll[0];
+        const dx = bx - ax, dy = by - ay;
+        const t = clamp(((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1e-18), 0, 1);
+        const dd = Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+        if (dd < best) {
+          best = dd;
+          bs = P.cum[i - 1] + (P.cum[i] - P.cum[i - 1]) * t;
+        }
+      }
+      return bs;
+    }
+    const R_WV = mkPath(KS.routes.wv);
+    const R_CR = mkPath(KS.routes.crawler);
+    const R_OT = mkPath(KS.routes.other);
+    const PT = KS.points;
+    const A = {
+      j1wv: projectPath(R_WV, PT.J1),
+      j1ot: projectPath(R_OT, PT.J1),
+      mOT: projectPath(R_OT, PT.M),
+      fOT: projectPath(R_OT, PT.F),
+      mCR: projectPath(R_CR, PT.M),
+      fCR: projectPath(R_CR, PT.F),
     };
-    const bs1 = baseStation("road", 28.5758, -80.6462, "BS-1 · Base station");
+    const routeLine = (P, color, dash) =>
+      add("road", {
+        polyline: {
+          positions: C.Cartesian3.fromDegreesArray(P.pts.flatMap(([la, lo]) => [lo, la])),
+          width: 5,
+          clampToGround: true,
+          material: dash ? new C.PolylineDashMaterialProperty({ color, dashLength: 18 }) : color,
+        },
+      });
+    routeLine(R_WV, css("#3ee0c6", 0.95));
+    routeLine(R_CR, YEL.withAlpha(0.9));
+    routeLine(R_OT, css("#ff9a3c", 0.9), true);
+
+    const NT = 10; // convoy TEUs (LB-201..210): first 6 are integrated, last 4 return
+    const NB = 34; // pool of Pad B vehicles
+    const V_TRUCK = 9; // m/s (~32 km/h)
+    const V_CRAWLER = 0.45; // m/s (~1.6 km/h)
+    const V_OT = 11; // m/s (~40 km/h)
+    const TLX_A = 8;
+    const TLX_B = 120;
+    const ZONE_R = 30;
+    const DMG = [
+      { s: 300, name: "D-1", n: 0, peak: 0, flagged: false },
+      { s: 760, name: "D-2", n: 0, peak: 0, flagged: false },
+    ];
+    const road = { sel: 0, focus: null, hdg: 0, range: 75, chip: "" };
+    const sim = { W: 0, cw: 0, phase: "convoy", pT: 0, hold: 0, tlx: TLX_A, last: T, integrated: 0, nextB: 6, jHold: false, jHoldUntil: 0, sampleAcc: 0, cycle: 0, stat: { convoyHold: 0, otDelaySum: 0, otDone: 0, queue: 0, otMax: 0 }, crawlerNote: false };
+    const crawler = { active: false, s: 0, v: 0, pos: null, brg: 0, base: null, stage: null, bay: null, nose: null, teu: [], qBox: null, qUp: null, qTeu: null };
+    const bsPosR = [28.5853, -80.6483];
+    const bs1 = baseStation("road", bsPosR[0], bsPosR[1], "BS-1 · Base station (LCC)");
     const bs1f = () => bs1;
 
-    function tickRoad() {
-      const x = (T / ROAD_PERIOD) % 2;
-      const t = x < 1 ? x : 2 - x;
-      road.dir = x < 1 ? 1 : -1;
-      road.f = 0.5 - 0.5 * Math.cos(Math.PI * t);
-      road.speed = 38 * Math.sin(Math.PI * t);
-      const p = roadAt(road.f);
-      const brg = road.dir > 0 ? p.brg : p.brg + 180;
-      road.pFlat = cart(p.la, p.lo, 0.35);
-      road.pTeu = cart(p.la, p.lo, 0.7 + TEU.z / 2);
-      road.pTop = cart(p.la, p.lo, 0.7 + TEU.z + 0.4);
-      road.q = hprQ(road.pTeu, brg - 90);
-      road.hdg = brg;
-      BUMPS.forEach((b, i) => {
-        const d = Math.abs(road.f - b);
-        if (d < 0.006 && !road.hit[i]) {
-          road.hit[i] = true;
-          road.shock = rnd(2.8, 4.1);
-          road.shockUntil = T + 2.5;
-          if (!road.flagged[i]) log("road", "Shock " + f1(road.shock) + " g · road segment R-" + (14 + i * 9) + " flagged");
-          road.flagged[i] = true;
-        }
-        if (d > 0.03) road.hit[i] = false;
-      });
-      const shockNow = road.shock * Math.max(0, (road.shockUntil - T) / 2.5);
-      road.shockNow = shockNow;
-      road.vib = 0.04 + 0.004 * road.speed + rnd(0, 0.03) + shockNow * 0.3;
-      const wx = api.getWx();
-      const base = wx ? wx.pts[api.nearest(p.la, p.lo)].temp[api.getHour()] : 27;
-      road.temp = base + 1.5;
-      road.rh = 55 + 8 * Math.sin(T / 9);
-      road.dist = C.Cartesian3.distance(road.pTop, bs1) / 1000;
+    const trucks = [];
+    for (let k = 0; k < NT; k++) {
+      trucks.push({ k, id: "LB-" + (201 + k), s: 0, v: 0, state: "wait", holdJ: 0, dep: k * 6, pFlat: null, pCab: null, pTeu: null, pTop: null, q: null, brg: 0, az: 1, vib: 0.03, temp: 26, rh: 55, speed: 0, loc: "dock", hot: false, hotUntil: 0, color: PALETTE[(k * 2) % PALETTE.length] });
     }
-    tickRoad();
+    const bvs = [];
+    for (let i = 0; i < NB; i++) bvs.push({ i, active: false, s: 0, v: 0, type: i % 3 === 0 ? "van" : "tanker", spawnW: 0, pos: null, q: null });
 
-    const roadTeu = teuBox("road", {
-      pos: CP(() => road.pTeu),
-      orient: CP(() => road.q),
-      color: PALETTE[0],
-      tag: { scn: "road" },
+    function poseTruck(t) {
+      const R = R_WV;
+      const pa = pathAt(R, t.s);
+      const brg = t.state === "return" ? pa.brg + 180 : pa.brg;
+      t.brg = brg;
+      const [cl, co] = offsetLL(pa.la, pa.lo, Math.sin((brg * Math.PI) / 180) * 5.9, Math.cos((brg * Math.PI) / 180) * 5.9);
+      t.pFlat = cart(pa.la, pa.lo, 0.95);
+      t.pCab = cart(cl, co, 1.9);
+      t.pTeu = cart(pa.la, pa.lo, 1.3 + TEU.z / 2);
+      t.pTop = cart(pa.la, pa.lo, 1.3 + TEU.z + 0.5);
+      t.q = hprQ(t.pTeu, brg - 90);
+    }
+    function poseB(b) {
+      const pa = pathAt(R_OT, b.s);
+      b.pos = cart(pa.la, pa.lo, b.type === "van" ? 1.4 : 2.0);
+      b.q = hprQ(b.pos, pa.brg - 90);
+    }
+    const uprightQ = (pos) => {
+      const en = enu(pos);
+      return C.Quaternion.fromRotationMatrix(new C.Matrix3(en.u.x, en.e.x, en.n.x, en.u.y, en.e.y, en.n.y, en.u.z, en.e.z, en.n.z));
+    };
+    const CR_TEU = [[-1.35, -6.6], [1.35, -6.6], [-1.35, 0], [1.35, 0], [-1.35, 6.6], [1.35, 6.6]];
+    function poseCrawler() {
+      const pa = pathAt(R_CR, crawler.s);
+      crawler.brg = pa.brg;
+      const g = (h) => cart(pa.la, pa.lo, h);
+      crawler.pos = g(0);
+      crawler.base = g(3);
+      crawler.stage = g(6 + 20);
+      crawler.bay = g(6 + 40 + 12);
+      crawler.nose = g(6 + 64 + 8);
+      crawler.qBox = hprQ(crawler.base, pa.brg - 90);
+      crawler.qUp = hprQ(crawler.stage, 0);
+      crawler.qTeu = uprightQ(crawler.bay);
+      CR_TEU.forEach(([lx, lz], k) => {
+        const [la, lo] = offsetLL(pa.la, pa.lo, lx, 0);
+        crawler.teu[k] = cart(la, lo, 58 + lz);
+      });
+    }
+
+    // ---- entities ----
+    const visT = (t) => () => t.state === "drive" || t.state === "return";
+    trucks.forEach((t) => {
+      const vis = visT(t);
+      add("road", { position: CP(() => t.pFlat), orientation: CP(() => t.q), box: { dimensions: new C.Cartesian3(7.6, 2.7, 0.7), material: css("#26384a"), outline: true, outlineColor: EDGE } }, vis);
+      add("road", { position: CP(() => t.pCab), orientation: CP(() => t.q), box: { dimensions: new C.Cartesian3(2.8, 2.5, 3.0), material: css("#c9ced4"), outline: true, outlineColor: EDGE } }, vis);
+      teuBox("road", { pos: CP(() => t.pTeu), orient: CP(() => t.q), color: t.color, tag: { scn: "road", k: t.k }, cond: vis });
+      add("road", { position: CP(() => t.pTop), orientation: CP(() => t.q), box: { dimensions: new C.Cartesian3(0.9, 0.6, 0.4), material: SKY, outline: true, outlineColor: WHITE } }, vis);
+      indicator("road", () => t.pTop, {
+        size: () => (road.sel === t.k ? 14 : 8),
+        color: () => (t.hot ? RED : SKY),
+        ring: true,
+        ringCond: () => vis() && (road.sel === t.k || t.hot),
+        rBase: 9,
+        rGrow: 14,
+        beacon: 60,
+        cond: vis,
+      });
     });
+    // Pad B vehicles
+    const TANKC = css("#e8ecef");
+    const VANC = css("#8e9aa6");
+    bvs.forEach((b) =>
+      add(
+        "road",
+        {
+          position: CP(() => b.pos),
+          orientation: CP(() => b.q),
+          box: {
+            dimensions: b.type === "van" ? new C.Cartesian3(5, 2.1, 2.2) : new C.Cartesian3(9.5, 2.6, 3.2),
+            material: new C.ColorMaterialProperty(CP(() => (b.v < 0.6 ? RED : b.type === "van" ? VANC : TANKC))),
+            outline: true,
+            outlineColor: EDGE,
+          },
+        },
+        () => b.active
+      )
+    );
+    // launch vehicle on the crawler-transporter (6 TEUs in the payload bay)
+    const crAct = () => crawler.active;
+    add("road", { position: CP(() => crawler.base), orientation: CP(() => crawler.qBox), box: { dimensions: new C.Cartesian3(46, 40, 6), material: css("#3a4a5a"), outline: true, outlineColor: EDGE } }, crAct);
+    add("road", { position: CP(() => crawler.stage), orientation: CP(() => crawler.qUp), cylinder: { length: 40, topRadius: 6.5, bottomRadius: 6.5, material: WHITE } }, crAct);
+    add("road", { position: CP(() => crawler.bay), orientation: CP(() => crawler.qUp), cylinder: { length: 24, topRadius: 6.5, bottomRadius: 6.5, material: SKY.withAlpha(0.14), outline: true, outlineColor: css("#bfe6fa", 0.6) } }, crAct);
+    add("road", { position: CP(() => crawler.nose), orientation: CP(() => crawler.qUp), cylinder: { length: 16, topRadius: 0.4, bottomRadius: 6.5, material: css("#e8f1f8") } }, crAct);
+    CR_TEU.forEach((_, k) => {
+      teuBox("road", { pos: CP(() => crawler.teu[k]), orient: CP(() => crawler.qTeu), color: trucks[k].color, tag: { scn: "road", k }, cond: crAct });
+      indicator("road", () => upBy(crawler.teu[k], 4), { size: () => (road.sel === k ? 12 : 7), ring: false, dist: 2500, cond: crAct, color: () => SKY });
+    });
+    indicator("road", () => upBy(crawler.bay, 22), { big: true, ring: false, halo: true, size: () => 12, cond: crAct });
     add("road", {
-      position: CP(() => road.pFlat),
-      orientation: CP(() => road.q),
-      box: { dimensions: new C.Cartesian3(7.6, 2.7, 0.7), material: css("#26384a"), outline: true, outlineColor: EDGE },
-    });
-    add("road", {
-      position: CP(() => upBy(road.pTop, 0.0)),
-      orientation: CP(() => road.q),
-      box: { dimensions: new C.Cartesian3(0.9, 0.6, 0.4), material: SKY, outline: true, outlineColor: WHITE },
-    });
-    indicator("road", () => road.pTop, {
-      big: true,
-      beacon: 70,
-      color: () => (road.shockNow > 0.2 ? RED : SKY),
-      rBase: 10,
-      rGrow: 16,
-    });
-    add("road", {
-      position: CP(() => upBy(road.pTop, 95)),
+      position: CP(() => upBy(crawler.bay, 30)),
       label: {
-        text: CP(() => "● TRACKED · LuminaBox LB-207\n" + road.speed.toFixed(0) + " km/h · " + road.vib.toFixed(2) + " g rms · " + road.temp.toFixed(0) + " °C"),
+        text: CP(() => "● TRACKED · 6 × TEU (LB-201–206)\nCrawler-transporter · " + (crawler.v * 3.6).toFixed(1) + " km/h"),
         font: MONO,
         fillColor: WHITE,
         showBackground: true,
         backgroundColor: DARK.withAlpha(0.82),
         backgroundPadding: new C.Cartesian2(8, 5),
         verticalOrigin: C.VerticalOrigin.BOTTOM,
-        distanceDisplayCondition: new C.DistanceDisplayCondition(0, 22000),
+        distanceDisplayCondition: new C.DistanceDisplayCondition(0, 20000),
         disableDepthTestDistance: INF,
       },
-    });
-    uplink("road", () => road.pTop, bs1f);
-    BUMPS.forEach((b, i) => {
-      const p = roadAt(b);
-      const g = cart(p.la, p.lo, 0);
-      add(
-        "road",
-        {
-          position: g,
-          ellipse: { semiMajorAxis: 16, semiMinorAxis: 16, height: 0.5, material: RED.withAlpha(0.45) },
+    }, crAct);
+    // selected-truck callout
+    add("road", {
+      position: CP(() => upBy(trucks[road.sel].pTop, 70)),
+      label: {
+        text: CP(() => {
+          const t = trucks[road.sel];
+          return "● TRACKED · LuminaBox " + t.id + "\n" + t.speed.toFixed(0) + " km/h · " + t.az.toFixed(2) + " g · " + t.temp.toFixed(0) + " °C";
+        }),
+        font: MONO,
+        fillColor: WHITE,
+        showBackground: true,
+        backgroundColor: DARK.withAlpha(0.82),
+        backgroundPadding: new C.Cartesian2(8, 5),
+        verticalOrigin: C.VerticalOrigin.BOTTOM,
+        distanceDisplayCondition: new C.DistanceDisplayCondition(0, 6000),
+        disableDepthTestDistance: INF,
+      },
+    }, () => visT(trucks[road.sel])());
+    uplink("road", () => (visT(trucks[road.sel])() ? trucks[road.sel].pTop : upBy(crawler.bay, 22)), bs1f, () => active === "road" && (visT(trucks[road.sel])() || crawler.active));
+
+    // damaged-road markers (detected from TEU shock readings)
+    DMG.forEach((p) => {
+      const pa = pathAt(R_WV, p.s);
+      add("road", { position: cart(pa.la, pa.lo, 0), ellipse: { semiMajorAxis: 16, semiMinorAxis: 16, height: 0.5, material: RED.withAlpha(0.5) } }, () => p.flagged);
+      add("road", {
+        position: cart(pa.la, pa.lo, 14),
+        point: { pixelSize: 9, color: RED, outlineColor: WHITE, outlineWidth: 2, disableDepthTestDistance: INF },
+        label: {
+          text: CP(() => "⚠ Road damage " + p.name + " · " + f1(p.peak) + " g peak · " + p.n + " TEU hits"),
+          font: MONO,
+          fillColor: WHITE,
+          outlineColor: DARK,
+          outlineWidth: 4,
+          style: C.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new C.Cartesian2(0, -12),
+          verticalOrigin: C.VerticalOrigin.BOTTOM,
+          distanceDisplayCondition: new C.DistanceDisplayCondition(0, 5000),
+          disableDepthTestDistance: INF,
         },
-        () => road.flagged[i]
-      );
-      add(
-        "road",
-        {
-          position: cart(p.la, p.lo, 12),
-          point: { pixelSize: 9, color: RED, outlineColor: WHITE, outlineWidth: 2, disableDepthTestDistance: INF },
-          label: {
-            text: "⚠ Road damage flagged",
-            font: MONO,
-            fillColor: WHITE,
-            outlineColor: DARK,
-            outlineWidth: 4,
-            style: C.LabelStyle.FILL_AND_OUTLINE,
-            pixelOffset: new C.Cartesian2(0, -12),
-            verticalOrigin: C.VerticalOrigin.BOTTOM,
-            distanceDisplayCondition: new C.DistanceDisplayCondition(0, 14000),
-            disableDepthTestDistance: INF,
-          },
-        },
-        () => road.flagged[i]
-      );
+      }, () => p.flagged);
     });
+    // conflict markers
+    const jp = cart(PT.J1[0], PT.J1[1], 0);
+    add("road", { position: jp, ellipse: { semiMajorAxis: ZONE_R, semiMinorAxis: ZONE_R, height: 0.5, material: new C.ColorMaterialProperty(CP(() => (sim.jHoldUntil > T ? RED.withAlpha(0.5) : AMB.withAlpha(0.28)))) } });
+    add("road", {
+      position: cart(PT.J1[0], PT.J1[1], 25),
+      label: { text: "⚠ Conflict zone · Pad B traffic ↔ TEU convoy", font: MONO, fillColor: WHITE, showBackground: true, backgroundColor: DARK.withAlpha(0.82), backgroundPadding: new C.Cartesian2(7, 4), verticalOrigin: C.VerticalOrigin.BOTTOM, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 7000), disableDepthTestDistance: INF },
+    });
+    const midCR = pathAt(R_CR, (A.mCR + A.fCR) / 2);
+    add("road", {
+      position: cart(midCR.la, midCR.lo, 25),
+      label: { text: "⚠ Shared Crawlerway · Pad B traffic queues behind the crawler", font: MONO, fillColor: WHITE, showBackground: true, backgroundColor: DARK.withAlpha(0.82), backgroundPadding: new C.Cartesian2(7, 4), verticalOrigin: C.VerticalOrigin.BOTTOM, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 9000), disableDepthTestDistance: INF },
+    });
+    const bstart = pathAt(R_OT, 0);
+    add("road", { position: cart(bstart.la, bstart.lo, 6), label: { text: "Pad B traffic → LC-39B", font: MONO, fillColor: css("#ffb36b"), outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, verticalOrigin: C.VerticalOrigin.BOTTOM, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 9000), disableDepthTestDistance: INF } });
+    add("road", { position: cart(KS.dock[0], KS.dock[1], 6), label: { text: "Logistics Facility dock", font: MONO, fillColor: css("#7fe9d6"), outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, verticalOrigin: C.VerticalOrigin.BOTTOM, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 4000), disableDepthTestDistance: INF } });
+
+    // ---- simulation ----
+    function spawnB() {
+      const b = bvs.find((x) => !x.active);
+      if (!b) return;
+      b.active = true;
+      b.s = 0;
+      b.v = V_OT;
+      b.spawnW = sim.W;
+      poseB(b);
+    }
+    function dmgHit(t, p) {
+      const g = rnd(2.7, 4.2) * (0.9 + 0.2 * Math.min(1, t.v / V_TRUCK));
+      p.n++;
+      p.peak = Math.max(p.peak, g);
+      t.hot = true;
+      t.hotUntil = T + 2.2;
+      hpush(t.id, { w: sim.W, az: 1 + g, vib: 0.4 + g * 0.2, temp: t.temp, rh: t.rh, loc: "road" });
+      hevent(t.id, { w: sim.W, y: 1 + g, kind: "dmg", label: p.name, color: "#ff6b5b" });
+      if (!p.flagged) {
+        p.flagged = true;
+        log("road", "Road damage " + p.name + " detected · " + f1(1 + g) + " g · " + t.id + " · segment flagged for repair");
+      } else if (p.n === 3) log("road", p.name + " confirmed by 3 TEUs · repair ticket raised");
+    }
+    function stepWorld(dw) {
+      sim.W += dw;
+      sim.cw += dw;
+      const sInWv = A.j1wv - ZONE_R;
+      const sOutWv = A.j1wv + ZONE_R;
+      const sInOt = A.j1ot - ZONE_R;
+      const sOutOt = A.j1ot + ZONE_R;
+      const rollout = sim.phase === "rollout" || sim.phase === "onpad";
+      sim.nextB -= dw;
+      if (sim.nextB <= 0) {
+        spawnB();
+        sim.nextB = rollout ? rnd(110, 190) : rnd(28, 55);
+      }
+      const wvIn = trucks.some((t) => t.state === "drive" && t.s > sInWv && t.s < sOutWv);
+      const otIn = bvs.some((b) => b.active && b.s > sInOt && b.s < sOutOt);
+      const otNear = bvs.some((b) => b.active && b.s <= sInOt && b.s > sInOt - 45);
+      // convoy
+      trucks.forEach((t) => {
+        if (t.state === "wait" && sim.cw >= t.dep && sim.phase === "convoy") {
+          t.state = "drive";
+          t.s = 0;
+          t.v = 0;
+          if (t.k === 0) log("road", "Convoy departs Logistics Facility · 10 TEUs → VAB");
+        }
+      });
+      const drivers = trucks.filter((t) => t.state === "drive").sort((a, b) => b.s - a.s);
+      drivers.forEach((t, i) => {
+        const lead = drivers[i - 1];
+        let vd = V_TRUCK;
+        if (lead) vd = Math.min(vd, lead.v + Math.max(0, lead.s - t.s - 14) / 2.5);
+        if (R_WV.total - t.s < 25) vd = Math.min(vd, 3);
+        let s1 = t.s + t.v * dw;
+        const blocked = otIn || (!wvIn && otNear);
+        if (t.s <= sInWv + 0.5 && s1 >= sInWv - 1 && blocked) {
+          vd = 0;
+          s1 = Math.min(s1, sInWv - 1.5);
+          t.holdJ += dw;
+          sim.jHoldUntil = T + 1.2;
+        }
+        t.v = vd < t.v ? Math.max(vd, t.v - 5 * dw) : Math.min(vd, t.v + 1.8 * dw);
+        if (vd === 0) t.v = 0;
+        if (lead) s1 = Math.min(s1, lead.s - 12);
+        DMG.forEach((p) => {
+          if (t.s < p.s && s1 >= p.s) dmgHit(t, p);
+        });
+        t.s = Math.max(t.s, s1);
+        if (t.s >= R_WV.total - 2) {
+          if (t.k < 6) {
+            t.state = "integrated";
+            t.v = 0;
+            sim.integrated++;
+            log("road", t.id + " at VAB · integrated into the launch vehicle (" + sim.integrated + "/6)");
+          } else {
+            t.state = "return";
+            t.v = 0;
+            t.s = R_WV.total;
+            log("road", t.id + " delivered to VAB · returning to warehouse");
+          }
+        }
+        sim.stat.convoyHold = Math.max(sim.stat.convoyHold, t.holdJ);
+      });
+      trucks.forEach((t) => {
+        if (t.state !== "return") return;
+        t.v = V_TRUCK * 0.9;
+        const s1 = t.s - t.v * dw;
+        DMG.forEach((p) => {
+          if (t.s > p.s && s1 <= p.s) dmgHit(t, p);
+        });
+        t.s = s1;
+        if (t.s <= 2) {
+          t.state = "home";
+          t.v = 0;
+        }
+      });
+      // phases
+      if (sim.phase === "convoy" && sim.integrated === 6 && trucks.every((t) => t.state !== "drive" && t.state !== "wait")) {
+        sim.phase = "integrate";
+        sim.pT = 0;
+        log("road", "All 6 TEUs integrated · stacking launch vehicle in the VAB");
+      } else if (sim.phase === "integrate") {
+        sim.pT += dw;
+        if (sim.pT >= 30) {
+          sim.phase = "rollout";
+          sim.tlx = TLX_B;
+          crawler.active = true;
+          crawler.s = 0;
+          crawler.v = 0;
+          log("road", "Rollout begins · crawler-transporter leaves the VAB for LC-39A (5.0 km at 1.6 km/h)");
+        }
+      } else if (sim.phase === "rollout") {
+        crawler.v = Math.min(V_CRAWLER, crawler.v + 0.02 * dw);
+        const s0 = crawler.s;
+        crawler.s = Math.min(R_CR.total, crawler.s + crawler.v * dw);
+        if (s0 < 2750 && crawler.s >= 2750) {
+          trucks.slice(0, 6).forEach((t) => {
+            hpush(t.id, { w: sim.W, az: 1.55, vib: 0.35, temp: t.temp, rh: t.rh, loc: "crawler" });
+            hevent(t.id, { w: sim.W, y: 1.55, kind: "dmg", label: "Crawlerway soft spot", color: "#ffb347" });
+          });
+          log("road", "Crawlerway gravel anomaly at 2.75 km · soft spot reported by 6 TEUs");
+        }
+        if (crawler.s >= R_CR.total - 0.5) {
+          sim.phase = "onpad";
+          crawler.v = 0;
+          sim.hold = 0;
+          log("road", "Vehicle on LC-39A · 6/6 TEUs nominal · Pad B traffic cleared");
+        }
+      }
+      // Pad B traffic (car-following; crawler is a slow leader on the shared Crawlerway)
+      const act = bvs.filter((b) => b.active).sort((a, b) => b.s - a.s);
+      const sCrOT = crawler.active && crawler.s >= A.mCR - 20 && crawler.s <= A.fCR ? A.mOT + (crawler.s - A.mCR) : null;
+      act.forEach((b, i) => {
+        let lead = act[i - 1] ? { s: act[i - 1].s, v: act[i - 1].v } : null;
+        if (sCrOT != null && b.s < sCrOT && (!lead || sCrOT < lead.s)) lead = { s: sCrOT, v: crawler.v };
+        let vd = V_OT;
+        if (lead) vd = Math.min(vd, lead.v + Math.max(0, lead.s - b.s - 14) / 2.5);
+        let s1 = b.s + b.v * dw;
+        if (b.s <= sInOt + 0.5 && s1 >= sInOt - 1 && wvIn) {
+          vd = 0;
+          s1 = Math.min(s1, sInOt - 1.5);
+          sim.jHoldUntil = T + 1.2;
+        }
+        b.v = vd < b.v ? Math.max(vd, b.v - 6 * dw) : Math.min(vd, b.v + 2 * dw);
+        if (vd === 0) b.v = 0;
+        if (lead) s1 = Math.min(s1, lead.s - 12);
+        b.s = Math.max(b.s, s1);
+        if (b.s >= R_OT.total - 3) {
+          const delay = Math.max(0, sim.W - b.spawnW - R_OT.total / V_OT);
+          sim.stat.otDelaySum += delay;
+          sim.stat.otDone++;
+          sim.stat.otMax = Math.max(sim.stat.otMax, delay);
+          b.active = false;
+        }
+      });
+      sim.stat.queue = bvs.filter((b) => b.active && b.v < 0.6 && b.s > A.mOT - 800 && b.s < A.fOT).length;
+      // thermal model: ambient on the road, conditioned inside the VAB / vehicle
+      const wx = api.getWx();
+      trucks.forEach((t) => {
+        const onRoad = t.state === "drive" || t.state === "return" || t.state === "wait" || t.state === "home";
+        const amb = wx ? wx.pts[api.nearest(28.58, -80.652)].temp[api.getHour()] : 27;
+        const target = onRoad ? amb + 1.8 : 21.5;
+        t.temp += (target - t.temp) * (1 - Math.exp(-dw / 150));
+        t.rh += ((onRoad ? 58 : 44) - t.rh) * (1 - Math.exp(-dw / 150));
+      });
+    }
+    function resetCycle() {
+      sim.cycle++;
+      sim.cw = 0;
+      sim.phase = "convoy";
+      sim.tlx = TLX_A;
+      sim.integrated = 0;
+      crawler.active = false;
+      crawler.s = 0;
+      crawler.v = 0;
+      sim.stat = { convoyHold: 0, otDelaySum: 0, otDone: 0, queue: 0, otMax: 0 };
+      trucks.forEach((t) => {
+        t.state = "wait";
+        t.s = 0;
+        t.v = 0;
+        t.holdJ = 0;
+        t.temp = 26;
+      });
+      bvs.forEach((b) => (b.active = false));
+      DMG.forEach((p) => (p.n = 0));
+      sim.nextB = 6;
+      log("road", "New cycle · next convoy staging at the Logistics Facility");
+    }
+    function teuTel(t) {
+      let loc = "dock";
+      let sp = 0;
+      if (t.state === "drive" || t.state === "return") {
+        loc = "road";
+        sp = t.v * 3.6;
+      } else if (t.state === "integrated") {
+        if (crawler.active) {
+          loc = "crawler";
+          sp = crawler.v * 3.6;
+        } else loc = "VAB";
+      }
+      t.loc = loc;
+      t.speed = sp;
+      t.az = 1 + (loc === "road" ? rnd(-1, 1) * (0.012 + 0.0035 * sp) : loc === "crawler" ? rnd(-1, 1) * 0.02 : rnd(-1, 1) * 0.004);
+      t.vib = loc === "road" ? 0.03 + 0.0045 * sp + rnd(0, 0.02) : loc === "crawler" ? 0.06 + rnd(0, 0.03) : 0.01 + rnd(0, 0.005);
+      t.hot = t.hot && T < t.hotUntil;
+    }
+    function tickRoad() {
+      const dt = clamp(T - sim.last, 0, 0.1);
+      sim.last = T;
+      if (sim.phase === "onpad") {
+        sim.hold += dt;
+        if (sim.hold > 9) resetCycle();
+      }
+      const dw = dt * sim.tlx;
+      const n = Math.max(1, Math.ceil(dw / 0.5));
+      for (let i = 0; i < n; i++) stepWorld(dw / n);
+      trucks.forEach((t) => {
+        if (t.state === "drive" || t.state === "return") poseTruck(t);
+        else if (!t.pTeu) poseTruck(t);
+      });
+      bvs.forEach((b) => b.active && poseB(b));
+      if (crawler.active || !crawler.pos) poseCrawler();
+      sim.sampleAcc += dt;
+      if (sim.sampleAcc >= 0.25) {
+        sim.sampleAcc = 0;
+        trucks.forEach((t) => {
+          teuTel(t);
+          hpush(t.id, { w: sim.W, az: t.az, vib: t.vib, temp: t.temp, rh: t.rh, loc: t.loc });
+        });
+      }
+      const st = trucks[road.sel];
+      if (st.state === "drive" || st.state === "return") {
+        road.focus = st.pTeu;
+        road.hdg = st.brg;
+        road.range = 75;
+      } else if (st.state === "integrated" && crawler.active) {
+        road.focus = crawler.bay;
+        road.hdg = crawler.brg;
+        road.range = 230;
+      } else {
+        road.focus = st.state === "integrated" ? cart(KS.vab.center[0], KS.vab.center[1], 20) : st.pTeu;
+        road.hdg = st.brg;
+        road.range = st.state === "integrated" ? 500 : 75;
+      }
+      const chip = "Time-lapse ×" + sim.tlx + " · real OSM roads · simulated";
+      if (active === "road" && chip !== road.chip) {
+        road.chip = chip;
+        $("#lb-chip").textContent = chip;
+      }
+    }
+    trucks.forEach((t) => {
+      poseTruck(t);
+      teuTel(t);
+    });
+    poseCrawler();
 
     function feedRoad() {
-      const age = ((T % 2) / 1).toFixed(1);
+      const t = trucks[road.sel];
+      const where = { road: "Convoy on road", crawler: "Crawler-transporter · rollout", VAB: "Inside the VAB (integration)", dock: t.state === "home" ? "Back at the warehouse" : "Staged at the dock" }[t.loc];
+      const ageS = ((T % 2) / 1).toFixed(1);
+      const chips = trucks
+        .map((x) => '<button type="button" class="tc' + (x.k === road.sel ? " is-on" : "") + '" data-tsel="' + x.k + '" title="' + x.id + '">' + (201 + x.k) + "</button>")
+        .join("");
+      const dm = DMG.filter((p) => p.flagged)
+        .map((p) => '<li class="dmg"><b>' + p.name + "</b><span>" + f1(p.peak) + " g peak · " + p.n + " TEU hit" + (p.n === 1 ? "" : "s") + (p.n >= 3 ? " · confirmed" : "") + "</span></li>")
+        .join("");
+      const avgD = sim.stat.otDone ? sim.stat.otDelaySum / sim.stat.otDone / 60 : 0;
+      const alertShock = t.az > 2.2;
       return (
-        '<div class="lb-asset"><span class="lb-badge ok">TRACKING</span><b>LB-207</b><small>1 × TEU on transporter</small></div>' +
+        '<div class="tchips" aria-label="Select a TEU">' + chips + "</div>" +
+        '<div class="lb-asset"><span class="lb-badge ' + (t.hot ? "alert" : "ok") + '">' + (t.hot ? "SHOCK" : "TRACKING") + "</span><b>" + t.id + "</b><small>" + where + (t.k < 6 ? " · goes to the pad" : " · returns to warehouse") + "</small></div>" +
         '<div class="kvs">' +
-        kv("Speed", road.speed.toFixed(0) + " km/h") +
-        kv("Vibration", road.vib.toFixed(2) + " g rms", road.shockNow > 0.2 ? "alert" : "") +
-        kv("Shock (peak)", road.shockNow > 0.2 ? f1(road.shockNow) + " g" : "–", road.shockNow > 0.2 ? "alert" : "") +
-        kv("Temp", road.temp.toFixed(0) + " °C") +
-        kv("Humidity", road.rh.toFixed(0) + " %RH") +
-        kv("Link", "BS-1 · " + f1(road.dist) + " km") +
-        kv("Last packet", age + " s ago") +
-        kv("Battery", "94 %") +
+        kv("Speed", t.speed.toFixed(t.loc === "crawler" ? 1 : 0) + " km/h") +
+        kv("Vertical accel", t.az.toFixed(2) + " g", alertShock ? "alert" : "") +
+        kv("Vibration", t.vib.toFixed(2) + " g rms") +
+        kv("Temp", t.temp.toFixed(1) + " °C") +
+        kv("Humidity", t.rh.toFixed(0) + " %RH") +
+        kv("Link", "BS-1 · LCC") +
         "</div>" +
+        hcBlock("Vertical acceleration · " + t.id, rollChart(t.id, "az", { yr: [0, 5.5], yfmt: (v) => v.toFixed(0), color: "#41b7e3", kind: "dmg", thresholds: [{ y: 2.2, color: "#ffb347", label: "damage threshold 2.2 g" }], aria: "Vertical acceleration history with detected road-damage hits" })) +
+        hcBlock("Temperature · " + t.id + " (°C)", rollChart(t.id, "temp", { yr: [18, 34], yfmt: (v) => v.toFixed(0), color: "#ffb347", kind: "none", aria: "Container temperature history" })) +
+        '<div class="sec-h">Road condition from TEU shocks</div>' +
+        (dm ? '<ul class="dmgs">' + dm + "</ul>" : '<p class="lb-hint">No damage detected yet.</p>') +
+        '<div class="sec-h">Pad B conflict traffic</div>' +
+        '<div class="kvs">' +
+        kv("Convoy held at J1", mmss(sim.stat.convoyHold), sim.stat.convoyHold > 5 ? "alert" : "") +
+        kv("Pad B queue", sim.stat.queue + " vehicles", sim.stat.queue > 3 ? "alert" : "") +
+        kv("Avg delay", avgD.toFixed(1) + " min", avgD > 3 ? "alert" : "") +
+        kv("Phase", { convoy: "Convoy", integrate: "Integration", rollout: "Rollout", onpad: "On pad" }[sim.phase]) +
+        "</div>" +
+        '<p class="lb-hint">Bottleneck flagged by LuminaTwin planning: the slow crawler (1.6 km/h) blocks Pad B traffic on the shared Crawlerway. Shift fuel deliveries outside the rollout window.</p>' +
         logHTML("road")
       );
     }
 
     /* =====================================================================
-       (b) WAREHOUSE
+       (b) WAREHOUSE: the real Kennedy Space Center "Logistics Facility" (OpenStreetMap footprint)
        ===================================================================== */
-    const WH = { lat: 28.5655, lon: -80.6555, L: 96, W: 54 };
+    const WHO = KS.logistics.obb;
+    const WH = { lat: WHO.lat, lon: WHO.lon, ang: WHO.heading, L: WHO.len, W: WHO.wid };
     const whCenter = cart(WH.lat, WH.lon, 0);
-    const rectCorners = (lat, lon, L, W) =>
-      [[-L / 2, -W / 2], [L / 2, -W / 2], [L / 2, W / 2], [-L / 2, W / 2]].flatMap(([dx, dy]) => {
-        const [la, lo] = offsetLL(lat, lon, dx, dy);
-        return [lo, la];
-      });
+    const wa = (WH.ang * Math.PI) / 180;
+    const obbLL = (x, y) => offsetLL(WH.lat, WH.lon, x * Math.cos(wa) - y * Math.sin(wa), x * Math.sin(wa) + y * Math.cos(wa));
+    const wpoly = C.Cartesian3.fromDegreesArray(KS.logistics.poly.flatMap(([la, lo]) => [lo, la]));
+    add("warehouse", { polygon: { hierarchy: wpoly, height: 0, extrudedHeight: 0.3, material: css("#16293b", 0.95) } });
+    add("warehouse", { polygon: { hierarchy: wpoly, height: 0, extrudedHeight: 14, material: SKY.withAlpha(0.06), outline: true, outlineColor: css("#9fd8f2", 0.85) } });
     add("warehouse", {
-      polygon: { hierarchy: C.Cartesian3.fromDegreesArray(rectCorners(WH.lat, WH.lon, WH.L, WH.W)), height: 0, extrudedHeight: 0.3, material: css("#16293b", 0.95) },
-    });
-    add("warehouse", {
-      polygon: {
-        hierarchy: C.Cartesian3.fromDegreesArray(rectCorners(WH.lat, WH.lon, WH.L, WH.W)),
-        height: 0,
-        extrudedHeight: 11,
-        material: SKY.withAlpha(0.06),
-        outline: true,
-        outlineColor: css("#9fd8f2", 0.85),
-      },
-    });
-    const dockC = offsetLL(WH.lat, WH.lon, 64, 0);
-    add("warehouse", {
-      polygon: { hierarchy: C.Cartesian3.fromDegreesArray(rectCorners(dockC[0], dockC[1], 28, 40)), height: 0, extrudedHeight: 0.2, material: css("#1d3246", 0.95) },
-    });
-    const whLbl = offsetLL(WH.lat, WH.lon, 0, 0);
-    add("warehouse", {
-      position: cart(whLbl[0], whLbl[1], 30),
+      position: cart(WH.lat, WH.lon, 34),
       label: {
-        text: "Staging warehouse (illustrative)\n● 36 TEUs tracked by LuminaBox",
+        text: "Logistics Facility · KSC warehouse (OSM footprint)\n● 36 TEUs tracked by LuminaBox",
         font: MONO,
         fillColor: WHITE,
         showBackground: true,
@@ -403,14 +872,18 @@
         disableDepthTestDistance: INF,
       },
     });
-    const dl = offsetLL(WH.lat, WH.lon, 64, 26);
+    // dock (road node nearest the building) expressed in the building frame
+    const dxm = (KS.dock[1] - WH.lon) * 111320 * COSL;
+    const dym = (KS.dock[0] - WH.lat) * 111320;
+    const dockL = { x: dxm * Math.cos(wa) + dym * Math.sin(wa), y: -dxm * Math.sin(wa) + dym * Math.cos(wa) };
     add("warehouse", {
-      position: cart(dl[0], dl[1], 4),
-      label: { text: "Outbound dock", font: MONO, fillColor: WHITE, outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 1500), disableDepthTestDistance: INF },
+      position: cart(KS.dock[0], KS.dock[1], 3),
+      point: { pixelSize: 8, color: css("#3ee0c6"), outlineColor: WHITE, outlineWidth: 2, disableDepthTestDistance: INF },
+      label: { text: "Outbound dock", font: MONO, fillColor: WHITE, outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new C.Cartesian2(0, -12), verticalOrigin: C.VerticalOrigin.BOTTOM, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 2500), disableDepthTestDistance: INF },
     });
-    const bsWpos = offsetLL(WH.lat, WH.lon, 52, -34);
-    const bsW = baseStation("warehouse", bsWpos[0], bsWpos[1], "BS-W · Base station");
-    uplink("warehouse", () => cart(WH.lat, WH.lon, 13), () => bsW);
+    const bsWp = obbLL(WH.L / 2 + 22, WH.W / 2 + 8);
+    const bsW = baseStation("warehouse", bsWp[0], bsWp[1], "BS-W · Base station");
+    uplink("warehouse", () => cart(WH.lat, WH.lon, 16), () => bsW);
 
     const CONTENTS = ["Avionics racks", "Payload adapters", "Ground support eq.", "Optical instruments", "Spares pallets", "Fairing hardware", "Test fixtures", "Cabling & harness"];
     const whBox = [];
@@ -419,9 +892,9 @@
       for (let c = 0; c < 10; c++) {
         const tiers = r === 1 && c >= 2 && c <= 7 ? 2 : 1;
         for (let t = 0; t < tiers; t++) {
-          const east = -38 + 8.5 * c;
-          const north = (r - 1) * 14;
-          const [la, lo] = offsetLL(WH.lat, WH.lon, east, north);
+          const east = -60 + 13.3 * c;
+          const north = (r - 1) * 34;
+          const [la, lo] = obbLL(east, north);
           const h = TEU.z / 2 + 0.3 + t * TEU.z;
           whBox.push({
             i: n,
@@ -438,19 +911,18 @@
         }
       }
     }
-    const transfer = whBox.find((b) => b.tier === 0 && b.east === -38 + 8.5 * 6 && b.north === 14);
+    const transfer = whBox.find((b) => b.tier === 0 && b.north === 34 && Math.abs(b.east - (-60 + 13.3 * 6)) < 0.01);
     transfer.dynamic = true;
-    const tHome = { east: transfer.east, north: transfer.north };
-    const tPath = [[tHome.east, 14], [tHome.east, 7], [52, 7], [64, 0]];
+    const tPath = [[transfer.east, 34], [transfer.east, 17], [dockL.x, 17], [dockL.x, dockL.y]];
     let selected = transfer;
 
-    const whq = hprQ(whCenter, 0);
     const STATE_COL = { ok: SKY, temp: AMB, shock: RED, door: AMB, moving: WHITE };
+    const whHead = -WH.ang;
     whBox.forEach((b) => {
       const pos = b.dynamic ? CP(() => b.pos) : b.pos;
       teuBox("warehouse", {
         pos,
-        orient: b.dynamic ? CP(() => hprQ(b.pos, 0)) : hprQ(b.pos, 0),
+        orient: b.dynamic ? CP(() => hprQ(b.pos, whHead)) : hprQ(b.pos, whHead),
         color: b.color,
         outline: undefined,
         tag: { scn: "warehouse", b },
@@ -467,7 +939,6 @@
     });
 
     function tPos(f) {
-      // piecewise path, f 0..1
       const segs = [];
       let tot = 0;
       for (let i = 1; i < tPath.length; i++) {
@@ -487,17 +958,17 @@
     }
     let whNext = T + 2;
     let whScan = T + 8;
+    let whSamp = 0;
     let lastTransferPhase = "";
-    const whLoc = (b) => offsetLL(WH.lat, WH.lon, b.east, b.north);
     function tickWarehouse() {
-      const c = (T % 40);
+      const c = T % 40;
       let f = 0;
       let phase = "hold";
       if (c >= 6 && c < 17) { f = ss((c - 6) / 11); phase = "out"; }
       else if (c >= 17 && c < 23) { f = 1; phase = "dock"; }
       else if (c >= 23 && c < 34) { f = 1 - ss((c - 23) / 11); phase = "back"; }
       const [e, nn] = tPos(f);
-      const [la, lo] = offsetLL(WH.lat, WH.lon, e, nn);
+      const [la, lo] = obbLL(e, nn);
       transfer.pos = cart(la, lo, transfer.h);
       transfer.east = e;
       transfer.north = nn;
@@ -522,6 +993,7 @@
           b.until = T + 8;
           b.temp = 31 + rnd(0, 3);
           log("warehouse", b.id + " temperature excursion " + f1(b.temp) + " °C");
+          hevent(b.id, { w: T, y: b.temp, kind: "temp", color: "#ffb347" });
         } else if (k < 0.75) {
           b.status = "door";
           b.until = T + 6;
@@ -529,13 +1001,20 @@
         } else {
           b.status = "shock";
           b.until = T + 5;
-          log("warehouse", b.id + " handling shock " + f1(rnd(1.6, 2.9)) + " g");
+          const g = rnd(1.6, 2.9);
+          log("warehouse", b.id + " handling shock " + f1(g) + " g");
+          hpush(b.id, { w: T, az: 1 + g, vib: 0.3, temp: b.temp, rh: b.rh });
+          hevent(b.id, { w: T, y: 1 + g, kind: "shock", color: "#ff6b5b" });
         }
         whNext = T + rnd(2.2, 4);
       }
       if (T >= whScan) {
         log("warehouse", "Inventory scan complete · " + whBox.length + "/" + whBox.length + " TEUs reporting");
         whScan = T + 12;
+      }
+      if (T >= whSamp) {
+        whSamp = T + 0.25;
+        whBox.forEach((b) => hpush(b.id, { w: T, az: 1 + rnd(-0.004, 0.004) + (b.status === "moving" ? rnd(0, 0.05) : 0), vib: 0.01, temp: b.temp, rh: b.rh }));
       }
     }
     tickWarehouse();
@@ -548,16 +1027,18 @@
           (s.status === "ok" ? "TRACKING" : s.status === "moving" ? "MOVING" : s.status.toUpperCase()) +
           "</span><b>" + s.id + "</b><small>" + s.contents + "</small></div>" +
           '<div class="kvs">' +
-          kv("Location", s.tier ? "Bay tier 2" : s.dynamic && s.east > 50 ? "Outbound dock" : "Bay tier 1") +
+          kv("Location", s.tier ? "Bay tier 2" : s.dynamic && s.north > 40 ? "Outbound dock" : "Bay tier 1") +
           kv("Temp", f1(s.temp) + " °C", s.status === "temp" ? "alert" : "") +
           kv("Humidity", s.rh.toFixed(0) + " %RH") +
           kv("Link", "BS-W · gateway") +
-          "</div>"
+          "</div>" +
+          hcBlock("Temperature · " + s.id + " (°C)", rollChart(s.id, "temp", { yr: [16, 38], yfmt: (v) => v.toFixed(0), color: "#ffb347", kind: "temp", thresholds: [{ y: 30, color: "#ff6b5b", label: "excursion 30 °C" }], aria: "Container temperature history" })) +
+          hcBlock("Vertical acceleration · " + s.id + " (g)", rollChart(s.id, "az", { yr: [0.8, 4.2], yfmt: (v) => v.toFixed(1), color: "#41b7e3", kind: "shock", aria: "Handling shock history" }))
         : "";
       return (
         '<div class="lb-summary"><span><b>' + whBox.length + "/" + whBox.length + "</b> reporting</span><span class=\"" + (alerts.length ? "alert" : "") + '"><b>' + alerts.length + "</b> alerts</span></div>" +
         sel +
-        '<p class="lb-hint">Click any container to inspect its LuminaBox.</p>' +
+        '<p class="lb-hint">Click any container to inspect its LuminaBox history.</p>' +
         logHTML("warehouse")
       );
     }
@@ -735,6 +1216,19 @@
       return C.Cartesian3.fromRadians(g.longitude, g.latitude, altOf(s) + baseH(s));
     };
 
+    let lsel = 0;
+    function launchTel(u, k) {
+      const bump = (c, w2) => Math.exp(-(((u - c) / w2) ** 2));
+      const layer = k < 0 ? 1 : Math.floor(k / 2);
+      const g0 = u < 0.1 ? 1 : u < 0.22 ? 1.4 + 2.8 * ((u - 0.1) / 0.12) : u < 0.7 ? 0.02 : u < 0.82 ? 0.3 + 3.2 * bump(0.76, 0.03) : u < 0.92 ? 1.1 + 0.6 * bump(0.9, 0.012) : 1;
+      const v0 = u < 0.1 ? 0.03 : u < 0.22 ? 1.2 + 1.8 * ((u - 0.1) / 0.12) : u < 0.7 ? 0.03 : u < 0.82 ? 0.4 + 1.6 * bump(0.76, 0.03) : u < 0.92 ? 0.3 + 0.8 * bump(0.9, 0.012) : 0.03;
+      const tOff = k < 0 ? 0 : (-1.2 + 0.5 * k) * (1 + 1.2 * bump(0.77, 0.04));
+      return {
+        g: g0 * (1 + 0.04 * layer),
+        vib: v0 * (1 + 0.12 * layer),
+        temp: 21 + 6 * bump(0.77, 0.04) + 1.2 * ss((u - 0.1) / 0.12) + tOff,
+      };
+    }
     const veh = { u: 0, s: 0, pos: posOfS(0), x: null, y: null, z: null, q: null, qIn: null, speed: 0, alt: 0, g: 1, vib: 0.03, temp: 21, link: "BS-1", linkOk: true };
     const mission = { u: 0, playing: false, last: T };
     const slots = [];
@@ -780,12 +1274,10 @@
       const pa = posOfS(sOfU(Math.max(0, u - d)));
       const pb = posOfS(sOfU(Math.min(1, u + d)));
       veh.speed = C.Cartesian3.distance(pa, pb) / (2 * d * MISSION_S) / 1000; // km/s
-      const bump = (c, w2) => Math.exp(-(((u - c) / w2) ** 2));
-      veh.g = u < 0.1 ? 1 : u < 0.22 ? 1.4 + 2.8 * ((u - 0.1) / 0.12) : u < 0.7 ? 0.02 : u < 0.82 ? 0.3 + 3.2 * bump(0.76, 0.03) : u < 0.92 ? 1.1 + 0.6 * bump(0.9, 0.012) : 1;
-      veh.vib = u < 0.1 ? 0.03 : u < 0.22 ? 1.2 + 1.8 * ((u - 0.1) / 0.12) : u < 0.7 ? 0.03 : u < 0.82 ? 0.4 + 1.6 * bump(0.76, 0.03) : u < 0.92 ? 0.3 + 0.8 * bump(0.9, 0.012) : 0.03;
-      veh.vib += rnd(0, 0.05);
-      veh.g += rnd(-0.04, 0.04);
-      veh.temp = 21 + 6 * bump(0.77, 0.04) + 1.2 * ss((u - 0.1) / 0.12);
+      const tl0 = launchTel(u, -1);
+      veh.g = tl0.g + rnd(-0.04, 0.04);
+      veh.vib = tl0.vib + rnd(0, 0.05);
+      veh.temp = tl0.temp;
       veh.link = "BS-1 (RF)";
       veh.linkOk = true;
       // TEU transforms
@@ -844,7 +1336,7 @@
     add("launch", {
       position: CP(() => upBy(veh.pos, 14)),
       label: {
-        text: CP(() => "● TRACKED · 6 × TEU\nLuminaBox LB-301–306 · " + launchLinkShort()),
+        text: CP(() => "● TRACKED · 6 × TEU\nLuminaBox LB-201–206 · " + launchLinkShort()),
         font: MONO,
         fillColor: WHITE,
         showBackground: true,
@@ -979,21 +1471,44 @@
       if (cam.director && cam.ready) directorCamera();
     }
 
+    function launchProfile(k) {
+      const g = [], v = [], t = [];
+      for (let i = 0; i <= 300; i++) {
+        const u = i / 300;
+        const tl = launchTel(u, k);
+        g.push([u * MISSION_S, tl.g]);
+        v.push([u * MISSION_S, tl.vib]);
+        t.push([u * MISSION_S, tl.temp]);
+      }
+      return { g, v, t };
+    }
     function feedLaunch() {
       const ph = PHASES[Math.max(0, PHASES.findIndex((p, i) => veh.u >= p.u0 && (veh.u < p.u1 || i === PHASES.length - 1)))];
       const delivered = veh.u >= 0.99;
+      const tl = launchTel(veh.u, lsel);
+      const chips = [0, 1, 2, 3, 4, 5].map((k) => '<button type="button" class="tc' + (k === lsel ? " is-on" : "") + '" data-lsel="' + k + '">' + (201 + k) + "</button>").join("");
+      const prof = launchProfile(lsel);
+      const bands = PHASES.map((p, i) => ({ x0: p.u0 * MISSION_S, x1: p.u1 * MISSION_S, fill: i % 2 ? "rgba(140,185,220,.08)" : "rgba(140,185,220,.03)", label: String(i + 1) }));
+      const cur = veh.u * MISSION_S;
+      const base = { xr: [0, MISSION_S], bands, cursor: cur, xl: ["T+00:00", "T+" + mmss(MISSION_S)], attrs: 'data-scrub="launch"' };
+      const cA = chart(Object.assign({ yr: [0, 5], yfmt: (v) => v.toFixed(0), series: [{ pts: prof.g, color: "#41b7e3", upto: cur }, { pts: prof.v, color: "#ffdf3c", upto: cur }], aria: "Acceleration and vibration through the mission" }, base));
+      const cT = chart(Object.assign({ yr: [18, 30], yfmt: (v) => v.toFixed(0), series: [{ pts: prof.t, color: "#ffb347", upto: cur }], aria: "Container temperature through the mission" }, base));
       return (
-        '<div class="lb-asset"><span class="lb-badge ' + (veh.linkOk ? "ok" : "log") + '">' + (veh.linkOk ? "TRACKING" : "BUFFERING") + "</span><b>LB-301–306</b><small>6 × TEU · " + ph.name + "</small></div>" +
+        '<div class="tchips" aria-label="Select a TEU">' + chips + "</div>" +
+        '<div class="lb-asset"><span class="lb-badge ' + (veh.linkOk ? "ok" : "log") + '">' + (veh.linkOk ? "TRACKING" : "BUFFERING") + "</span><b>LB-" + (201 + lsel) + "</b><small>" + ["bottom", "bottom", "middle", "middle", "top", "top"][lsel] + " layer of the payload bay · " + ph.name + "</small></div>" +
         '<div class="kvs">' +
         kv("Mission time", "T+" + mmss(veh.u * MISSION_S)) +
         kv("Altitude", veh.alt < 1 ? "0 km" : veh.alt.toFixed(veh.alt < 100 ? 1 : 0) + " km") +
         kv("Speed", veh.speed < 0.05 ? "0 km/s" : veh.speed.toFixed(2) + " km/s") +
-        kv("Accel", veh.g.toFixed(1) + " g", veh.g > 2.5 ? "alert" : "") +
-        kv("Vibration", veh.vib.toFixed(2) + " g rms", veh.vib > 1.5 ? "alert" : "") +
-        kv("Temp", veh.temp.toFixed(0) + " °C") +
+        kv("Accel", tl.g.toFixed(1) + " g", tl.g > 2.5 ? "alert" : "") +
+        kv("Vibration", tl.vib.toFixed(2) + " g rms", tl.vib > 1.5 ? "alert" : "") +
+        kv("Temp", tl.temp.toFixed(1) + " \u00B0C") +
         kv("Link", veh.link) +
         kv("TEUs reporting", delivered ? "6/6 · synced" : "6/6") +
         "</div>" +
+        hcBlock('Acceleration <i class="lg-a"></i>g and vibration <i class="lg-v"></i>g rms · LB-' + (201 + lsel), cA) +
+        hcBlock("Temperature · LB-" + (201 + lsel) + " (°C)", cT) +
+        '<p class="lb-hint">Numbers mark mission phases. Click a chart to scrub the mission.</p>' +
         logHTML("launch")
       );
     }
@@ -1086,7 +1601,7 @@
     }
     const LINK_COL = { sat: VIOLET, rf: SKY, lte: SKY };
 
-    function tickShipping() {
+    function tickShipping0() {
       ROUTES.forEach((r) => {
         const cyc = r.period + 9;
         const x = T % cyc;
@@ -1183,6 +1698,14 @@
         }
       }
     });
+    let shipSamp = 0;
+    function tickShipping() {
+      tickShipping0();
+      if (T >= shipSamp) {
+        shipSamp = T + 0.25;
+        ROUTES.forEach((r, i) => hpush("ship-" + r.id, { w: T, az: 1 + Math.sin(T * 0.9 + i) * (r.mode === "ship" ? 0.012 : 0.01) + rnd(-1, 1) * (r.mode === "ship" ? 0.006 : 0.008 + 0.0004 * r.speed), vib: 0.02, temp: 24 + 3 * Math.sin(T / 60 + i * 2), link: r.link.k }));
+      }
+    }
     tickShipping();
 
     const linkBadge = (r) => (r.link.k === "sat" ? "sat" : "ok");
@@ -1202,6 +1725,23 @@
           '<div class="rt-link">' + (r.link.text || linkLabel(r)) + "</div>" +
           '<button class="rt-follow" type="button" data-follow="' + i + '">' + (on ? "Release camera" : "Follow") + "</button></div>";
       });
+      const sr = ROUTES[cam.follow != null ? cam.follow : 0];
+      const hs = HS("ship-" + sr.id).s;
+      const sb = [];
+      let cb = null;
+      hs.forEach((p) => {
+        if (p.link === "sat") {
+          if (!cb) cb = { x0: p.w, x1: p.w, fill: "rgba(181,140,255,.25)" };
+          cb.x1 = p.w;
+        } else if (cb) {
+          sb.push(cb);
+          cb = null;
+        }
+      });
+      if (cb) sb.push(cb);
+      html +=
+        hcBlock(sr.name + " \u00B7 vertical acceleration (g) \u00B7 violet = SATCOM", rollChart("ship-" + sr.id, "az", { yr: [0.95, 1.1], yfmt: (v) => v.toFixed(2), color: "#41b7e3", kind: "none", bands: sb, aria: "Vertical acceleration history with satellite-link periods" })) +
+        hcBlock(sr.name + " \u00B7 temperature (\u00B0C)", rollChart("ship-" + sr.id, "temp", { yr: [18, 32], yfmt: (v) => v.toFixed(0), color: "#ffb347", kind: "none", aria: "Container temperature history" }));
       return html + logHTML("shipping");
     }
 
@@ -1212,10 +1752,10 @@
     const followBtn = $("#lb-follow");
     const tabs = document.querySelectorAll(".stab");
     const META = {
-      road: { title: "LuminaBox LB-207", sub: "Tracking 1 TEU · road transit", chip: "Time-lapse 10× · simulated telemetry", follow: "Follow asset (scroll to zoom)" },
-      warehouse: { title: "LuminaBox inventory", sub: "Tracking 36 TEUs · staging warehouse", chip: "Simulated inventory feed · click a container", follow: null },
+      road: { title: "LuminaBox convoy", sub: "Tracking 10 TEUs \u00B7 warehouse \u2192 VAB \u2192 pad", chip: "Time-lapse \u00B7 real OSM roads \u00B7 simulated", follow: "Follow selected TEU (scroll to zoom)" },
+      warehouse: { title: "LuminaBox inventory", sub: "Tracking 36 TEUs \u00B7 KSC Logistics Facility", chip: "Simulated inventory feed · click a container", follow: null },
       shipping: { title: "LuminaBox fleet", sub: "Tracking " + SHIP_TEUS + " TEUs \u00B7 3 routes to Cape Canaveral", chip: "Time-lapse \u00B7 simulated \u00B7 SATCOM at sea", follow: null },
-      launch: { title: "LuminaBox LB-301–306", sub: "Tracking 6 TEUs · Cape → Japan", chip: "Notional trajectory · simulated", follow: "Director camera (scroll to zoom)" },
+      launch: { title: "LuminaBox LB-201–206", sub: "Tracking 6 TEUs · Cape → Japan", chip: "Notional trajectory · simulated", follow: "Director camera (scroll to zoom)" },
     };
     const ctlForecast = $("#ctl-forecast");
     const ctlMission = $("#ctl-mission");
@@ -1280,13 +1820,14 @@
           if (cb) cb.dispatchEvent(new Event("change"));
         });
       }
+      if (id === "road" && !opts.force) resetCycle();
       tickActive();
       applyVisibility();
       if (opts.noFly) return;
       if (id === "road") {
-        viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(28.59, -80.632, 0), 1), {
+        viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(28.5915, -80.6285, 0), 1), {
           duration: 1.8,
-          offset: new C.HeadingPitchRange(C.Math.toRadians(0), C.Math.toRadians(-52), 7800),
+          offset: new C.HeadingPitchRange(C.Math.toRadians(0), C.Math.toRadians(-58), 9600),
         });
       } else if (id === "warehouse") {
         viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(WH.lat, WH.lon, 4), 1), {
@@ -1369,6 +1910,26 @@
         cam.zoom = 1;
       }
     });
+    $("#lb-feed-body").addEventListener("pointerdown", (ev) => {
+      const ts = ev.target.closest("[data-tsel]");
+      if (ts) {
+        road.sel = parseInt(ts.dataset.tsel, 10);
+        return;
+      }
+      const ls = ev.target.closest("[data-lsel]");
+      if (ls) {
+        lsel = parseInt(ls.dataset.lsel, 10);
+        return;
+      }
+      const sv = ev.target.closest("svg[data-scrub]");
+      if (sv && active === "launch") {
+        const r = sv.getBoundingClientRect();
+        const f = clamp(((ev.clientX - r.left) / r.width * 268 - 30) / (268 - 30 - 6), 0, 1);
+        setPlaying(false);
+        mission.u = f;
+        $("#mission-t").value = Math.round(f * 1000);
+      }
+    });
     const assetCb = document.querySelector('[data-layer="assets"]');
     assetCb.addEventListener("change", () => {
       assetsOn = assetCb.checked;
@@ -1381,6 +1942,7 @@
       const picked = viewer.scene.pick(click.position);
       const tag = picked && picked.id && picked.id._lb;
       if (tag && tag.scn === "warehouse" && active === "warehouse") selected = tag.b;
+      if (tag && tag.scn === "road" && active === "road") road.sel = tag.k;
     }, C.ScreenSpaceEventType.LEFT_CLICK);
 
     // render loop + feed
@@ -1395,8 +1957,8 @@
       if (active === "launch" || active === "shipping") updateSats();
       if (active === "road" && cam.roadFollow) {
         viewer.camera.lookAt(
-          road.pTeu,
-          new C.HeadingPitchRange(C.Math.toRadians(road.hdg + 150), C.Math.toRadians(-24), 75 * cam.zoom)
+          road.focus,
+          new C.HeadingPitchRange(C.Math.toRadians(road.hdg + 150), C.Math.toRadians(-24), road.range * cam.zoom)
         );
       }
     });
@@ -1420,10 +1982,10 @@
 
     overlay.hidden = false;
     setScenario("road", { force: true, noFly: true });
-    log("road", "LB-207 online · link established with BS-1");
+    log("road", "10 LuminaBoxes online \u00B7 link established with BS-1 (LCC)");
     log("warehouse", "Gateway BS-W online · " + whBox.length + " LuminaBoxes joined");
     log("shipping", "Fleet online \u00B7 " + SHIP_TEUS + " LuminaBoxes joined \u00B7 SATCOM fallback armed");
-    log("launch", "LB-301–306 armed · link BS-1");
+    log("launch", "LB-201–206 armed · link BS-1");
     void teuInPos;
     void launchOn;
   }

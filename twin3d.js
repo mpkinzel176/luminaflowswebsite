@@ -17,8 +17,8 @@
   /* ---------- Sites (approximate public coordinates) ---------- */
   const SITES = {
     all: { name: "Site overview", lat: 28.585, lon: -80.625, range: 38000, heading: 0, pitch: -48 },
-    vab: { name: "Vehicle Assembly Building", lat: 28.5729, lon: -80.6508, range: 1100, heading: -35, pitch: -28 },
-    lc39a: { name: "Launch Complex 39A", lat: 28.6084, lon: -80.6043, range: 1200, heading: 215, pitch: -27 },
+    vab: { name: "Vehicle Assembly Building", lat: 28.58561, lon: -80.65089, range: 1000, heading: -35, pitch: -28 },
+    lc39a: { name: "Launch Complex 39A", lat: 28.60836, lon: -80.6041, range: 1200, heading: 215, pitch: -27 },
     lc39b: { name: "Launch Complex 39B", lat: 28.6272, lon: -80.6208, range: 1200, heading: 140, pitch: -27 },
     slc40: { name: "Space Launch Complex 40", lat: 28.5621, lon: -80.5772, range: 1200, heading: 300, pitch: -27 },
   };
@@ -305,29 +305,45 @@
       layers.cad.push(e);
     };
 
-    // VAB (approximate massing)
-    addBox(28.5729, -80.6508, 218, 158, 160, 0, "Vehicle Assembly Building");
-    label(28.5729, -80.6508, "Vehicle Assembly Building", 175, 90000);
-    // Launch pads + service towers
+    // Real facility footprints and roads from OpenStreetMap (see ksc-data.js)
+    const KS = window.KSC;
+    const polyEnt = (poly, h, mat, name) => {
+      const e = viewer.entities.add({
+        name,
+        polygon: {
+          hierarchy: C.Cartesian3.fromDegreesArray(poly.flatMap(([la, lo]) => [lo, la])),
+          height: 0,
+          extrudedHeight: h,
+          material: mat,
+          outline: true,
+          outlineColor: outline,
+        },
+      });
+      layers.cad.push(e);
+      return e;
+    };
+    const polyCenter = (poly) => [poly.reduce((a, p) => a + p[0], 0) / poly.length, poly.reduce((a, p) => a + p[1], 0) / poly.length];
+    polyEnt(KS.vab.poly, KS.vab.h, steel.withAlpha(0.78), "Vehicle Assembly Building");
+    label(KS.vab.center[0], KS.vab.center[1], "Vehicle Assembly Building", 175, 90000);
+    polyEnt(KS.lcc.poly, KS.lcc.h, steel.withAlpha(0.7), "Launch Control Center");
+    const lccC = polyCenter(KS.lcc.poly);
+    label(lccC[0], lccC[1], "Launch Control Center", 40, 5000);
+    // Launch pads
     const pad = (s, name, rocket) => {
       const S = SITES[s];
       const p = viewer.entities.add({
         position: C.Cartesian3.fromDegrees(S.lon, S.lat, 0),
-        ellipse: { semiMajorAxis: 130, semiMinorAxis: 130, height: 0, extrudedHeight: 6, material: C.Color.fromCssColorString("#8fb2c9").withAlpha(0.85) },
+        ellipse: { semiMajorAxis: 85, semiMinorAxis: 85, height: 0, extrudedHeight: 3, material: C.Color.fromCssColorString("#8fb2c9").withAlpha(0.85) },
       });
       layers.cad.push(p);
-      const t = viewer.entities.add({
-        position: C.Cartesian3.fromDegrees(S.lon + 0.0009, S.lat + 0.0004, 55),
-        box: { dimensions: new C.Cartesian3(18, 18, 100), material: steel.withAlpha(0.9), outline: true, outlineColor: outline },
-      });
-      layers.cad.push(t);
+      if (s === "lc39a") polyEnt(KS.fssA.poly, KS.fssA.h, steel.withAlpha(0.9), "LC-39A Fixed Service Structure");
       if (rocket) {
         const body = viewer.entities.add({
-          position: C.Cartesian3.fromDegrees(S.lon, S.lat, 6 + 50),
+          position: C.Cartesian3.fromDegrees(S.lon, S.lat, 3 + 50),
           cylinder: { length: 100, topRadius: 5, bottomRadius: 5, material: C.Color.WHITE },
         });
         const nose = viewer.entities.add({
-          position: C.Cartesian3.fromDegrees(S.lon, S.lat, 6 + 100 + 8),
+          position: C.Cartesian3.fromDegrees(S.lon, S.lat, 3 + 100 + 8),
           cylinder: { length: 16, topRadius: 0, bottomRadius: 5, material: C.Color.fromCssColorString("#e8f1f8") },
         });
         layers.cad.push(body, nose);
@@ -337,37 +353,27 @@
     };
     pad("lc39a", "LC-39A", true);
     pad("lc39b", "LC-39B", false);
-    // lightning towers at 39B (illustrative)
-    [
-      [0.0025, 0.0018],
-      [-0.0025, 0.0018],
-      [0.0, -0.0028],
-    ].forEach(([dx, dy]) => {
-      const S = SITES.lc39b;
-      layers.cad.push(
-        viewer.entities.add({
-          polyline: {
-            positions: C.Cartesian3.fromDegreesArrayHeights([S.lon + dx, S.lat + dy, 0, S.lon + dx, S.lat + dy, 150]),
-            width: 3,
-            material: C.Color.fromCssColorString("#ffdf3c"),
-          },
-        })
-      );
-    });
     pad("slc40", "SLC-40", false);
 
-    // Crawlerway corridor (approximate)
-    layers.cad.push(
-      viewer.entities.add({
-        polyline: {
-          positions: C.Cartesian3.fromDegreesArray(CRAWLERWAY.flatMap(([la, lo]) => [lo, la])),
-          width: 5,
-          clampToGround: true,
-          material: new C.PolylineDashMaterialProperty({ color: C.Color.fromCssColorString("#ffdf3c"), dashLength: 18 }),
-        },
-      })
-    );
-    label(28.596, -80.619, "Crawlerway (approx.)", 20, 30000);
+    // Crawlerway (real OSM geometry): VAB -> Pad A, and the branch to Pad B past the fork
+    const crawlDash = new C.PolylineDashMaterialProperty({ color: C.Color.fromCssColorString("#ffdf3c"), dashLength: 18 });
+    const crawl = (pts) =>
+      layers.cad.push(
+        viewer.entities.add({ polyline: { positions: C.Cartesian3.fromDegreesArray(pts.flatMap(([la, lo]) => [lo, la])), width: 5, clampToGround: true, material: crawlDash } })
+      );
+    crawl(KS.routes.crawler);
+    const oth = KS.routes.other;
+    let iF = 0;
+    let bdF = 1e9;
+    oth.forEach((p, i) => {
+      const d = Math.hypot(p[0] - KS.points.F[0], p[1] - KS.points.F[1]);
+      if (d < bdF) {
+        bdF = d;
+        iF = i;
+      }
+    });
+    crawl(oth.slice(iF));
+    label(KS.points.F[0], KS.points.F[1], "Crawlerway", 20, 30000);
 
     // Tracked LuminaBox assets (TEU scenarios) are built in lumina-tracking.js
   }

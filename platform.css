@@ -1332,3 +1332,140 @@
 .whatif input:disabled {
   opacity: 0.45;
 }
+
+/* Time-history charts + TEU selector */
+.hc {
+  margin-top: 0.8rem;
+}
+
+.hc-title {
+  margin-bottom: 0.25rem;
+  color: var(--steel);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+
+.hc-title i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 0.2rem 0 0.35rem;
+  border-radius: 50%;
+}
+
+.hc-title .lg-a {
+  background: #41b7e3;
+}
+
+.hc-title .lg-v {
+  background: #ffdf3c;
+}
+
+.hchart {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+
+.hchart[data-scrub] {
+  cursor: ew-resize;
+}
+
+.hc-grid {
+  stroke: rgba(140, 185, 220, 0.14);
+  stroke-width: 1;
+}
+
+.hc-tick {
+  fill: #7d97ac;
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.hc-thr {
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.hc-band {
+  fill: #9fb6c8;
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.hc-empty {
+  padding: 1.2rem 0.6rem;
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--steel);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.tchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.7rem;
+}
+
+.tc {
+  min-width: 2.3rem;
+  padding: 0.22rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.tc.is-on {
+  color: var(--bg);
+  border-color: var(--yellow);
+  background: var(--yellow);
+  font-weight: 700;
+}
+
+.sec-h {
+  margin: 1rem 0 0.4rem;
+  color: var(--sky);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dmgs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.dmg {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-left: 3px solid #ff6b5b;
+  border-radius: 0 6px 6px 0;
+  background: rgba(255, 107, 91, 0.08);
+  font-size: 0.74rem;
+}
+
+.dmg b {
+  color: #fff;
+  font-family: var(--mono);
+}
+
+.dmg span {
+  color: #c6d8e6;
+  text-align: right;
+}
