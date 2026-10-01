@@ -229,6 +229,7 @@
       c.rectangle.material = (pr >= 2.5 ? C.Color.fromCssColorString("#ffdf3c") : C.Color.fromCssColorString("#3fb8ff")).withAlpha(alpha);
     });
     updateReadout();
+    window.dispatchEvent(new Event("twin:update"));
   }
 
   function buildScene() {
@@ -435,6 +436,8 @@
       layers,
       getWx: () => wx,
       getHour: () => hour,
+      getSelected: () => selected,
+      grid,
       nearest,
     };
     window.dispatchEvent(new CustomEvent("twin:ready", { detail: window.twinApi }));
@@ -473,6 +476,7 @@
       $("#stage-site").textContent = SITES[selected].name;
       fly(selected);
       updateReadout();
+      window.dispatchEvent(new Event("twin:site"));
     })
   );
 

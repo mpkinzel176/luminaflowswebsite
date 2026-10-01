@@ -526,6 +526,21 @@
                 </button>
               </div>
 
+              <div id="res-group">
+                <h3 class="side-title">Weather resolution</h3>
+                <div class="seg" id="res-mode" role="group" aria-label="Weather resolution">
+                  <button type="button" class="is-on" data-res="coarse" aria-pressed="true">Forecast grid<small>~7 km cells</small></button>
+                  <button type="button" data-res="fine" aria-pressed="false">Downscaled<small>hypothetical sim</small></button>
+                </div>
+                <p class="seg-note" id="res-note"></p>
+                <div class="whatif" id="whatif" hidden>
+                  <label for="wi-spd">What-if wind speed <output id="wi-spd-out">forecast</output></label>
+                  <input id="wi-spd" type="range" min="0" max="25" step="1" value="0" />
+                  <label for="wi-dir">Wind from <output id="wi-dir-out">forecast</output></label>
+                  <input id="wi-dir" type="range" min="0" max="355" step="5" value="90" disabled />
+                </div>
+              </div>
+
               <h3 class="side-title">Data layers</h3>
               <div class="layers">
                 <label><input type="checkbox" data-layer="wind" checked /><span>Wind vectors</span></label>
@@ -551,6 +566,12 @@
               <div class="cesium-wrap">
                 <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
                   <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
+                </div>
+                <div class="ds-overlay" id="ds-overlay" hidden>
+                  <div class="ds-title">Wind speed at 2 m &middot; downscaled</div>
+                  <div class="ds-bar" aria-hidden="true"></div>
+                  <div class="ds-scale"><span id="ds-min">0</span><span id="ds-mid"></span><span id="ds-max"></span><em>m/s</em></div>
+                  <div class="ds-chip">Hypothetical simulation</div>
                 </div>
                 <div class="lb-overlay" id="lb-overlay" hidden>
                   <div class="lb-card">
@@ -598,6 +619,7 @@
                 <div><dt>Precipitation</dt><dd id="r-precip">-</dd></div>
                 <div><dt>Temperature</dt><dd id="r-temp">-</dd></div>
               </dl>
+              <div class="ds-stats" id="ds-stats" hidden></div>
 
               <div class="spark" id="sp-gust-wrap">
                 <span class="spark-title">Gust · 48 h (m/s)</span>
@@ -770,5 +792,6 @@
     <script src="platform.js"></script>
     <script src="twin3d.js"></script>
     <script src="lumina-tracking.js"></script>
+    <script src="downscale.js"></script>
   </body>
 </html>

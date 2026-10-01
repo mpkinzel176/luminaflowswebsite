@@ -1250,6 +1250,7 @@
       }
       cam.zoom = 1;
       active = id;
+      window.dispatchEvent(new CustomEvent("twin:scenario", { detail: id }));
       tabs.forEach((t) => {
         const on = t.dataset.scn === id;
         t.classList.toggle("is-active", on);

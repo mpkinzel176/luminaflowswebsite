@@ -1164,3 +1164,171 @@
   color: var(--yellow);
   border-color: var(--yellow);
 }
+
+/* Weather downscaling */
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.seg button {
+  padding: 0.45rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.seg button small {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--steel);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
+.seg button.is-on {
+  border-color: var(--yellow);
+  background: var(--panel-2);
+  box-shadow: inset 0 -2px 0 var(--yellow);
+}
+
+.seg-note {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.ds-overlay {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 1.9rem;
+  z-index: 3;
+  width: min(230px, calc(100% - 1.6rem));
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(65, 183, 227, 0.55);
+  border-radius: 8px;
+  background: rgba(6, 18, 31, 0.86);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.ds-title {
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ds-bar {
+  height: 9px;
+  margin: 0.45rem 0 0.25rem;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #0b1f33 0%, #1b5f8c 25%, #41b7e3 50%, #ffdf3c 75%, #ff6b5b 100%);
+}
+
+.ds-scale {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--steel);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+}
+
+.ds-scale em {
+  font-style: normal;
+}
+
+.ds-chip {
+  margin-top: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid rgba(255, 223, 60, 0.45);
+  border-radius: 99px;
+  color: var(--yellow);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.ds-stats {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem;
+  border: 1px solid rgba(65, 183, 227, 0.45);
+  border-radius: 8px;
+  background: rgba(65, 183, 227, 0.06);
+}
+
+.ds-h {
+  margin-bottom: 0.4rem;
+  color: var(--sky);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ds-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  font-size: 0.74rem;
+}
+
+.ds-row span {
+  color: var(--muted);
+}
+
+.ds-row b {
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+#res-group {
+  margin-top: 1.4rem;
+}
+
+#res-group .side-title:first-child {
+  margin-top: 0;
+}
+
+.whatif {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.whatif label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #c6d8e6;
+  font-size: 0.74rem;
+}
+
+.whatif output {
+  color: var(--yellow);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.whatif input[type="range"] {
+  width: 100%;
+  margin: 0 0 0.35rem;
+  accent-color: var(--yellow);
+}
+
+.whatif input:disabled {
+  opacity: 0.45;
+}
