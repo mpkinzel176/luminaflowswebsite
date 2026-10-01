@@ -27,7 +27,7 @@
     let T = performance.now() / 1000;
     let active = "road";
     let assetsOn = true;
-    const groups = { road: [], warehouse: [], launch: [], shipping: [], sat: [] };
+    const groups = { road: [], warehouse: [], launch: [], shipping: [], hormuz: [], sat: [] };
     const reg = (scn, e, cond) => {
       e._scn = scn;
       e._cond = cond;
@@ -38,7 +38,7 @@
     function applyVisibility() {
       Object.keys(groups).forEach((k) =>
         groups[k].forEach((e) => {
-          const on = k === "sat" ? active === "launch" || active === "shipping" : k === active;
+          const on = k === "sat" ? active === "launch" || active === "shipping" || active === "hormuz" : k === active;
           e.show = assetsOn && on && (!e._cond || e._cond());
         })
       );
@@ -232,7 +232,7 @@
       return e;
     }
 
-    const feedLog = { road: [], warehouse: [], launch: [], shipping: [] };
+    const feedLog = { road: [], warehouse: [], launch: [], shipping: [], hormuz: [] };
     const log = (scn, msg) => {
       feedLog[scn].unshift({ t: new Date(), msg });
       feedLog[scn].length = Math.min(feedLog[scn].length, 6);
@@ -1852,6 +1852,335 @@
     }
 
     /* =====================================================================
+       (e) STRAIT OF HORMUZ: tanker traffic, a bottleneck, and tracking in a contested environment.
+       Everything here is simulated. Lanes, gate spacing and interference zones are notional.
+       ===================================================================== */
+    const KN = 0.5144;
+    const HZ_OUT = [[26.4, 55.2], [26.38, 55.6], [26.44, 55.98], [26.5, 56.35], [26.46, 56.74], [26.2, 57.04], [25.72, 57.42], [25.2, 58.05]];
+    const HZ_IN = HZ_OUT.map(([la, lo]) => [la + 0.07, lo]).reverse();
+    const HZ_LANES = [
+      { name: "Outbound", P: mkPath(HZ_OUT), gateLL: [26.4, 55.6], col: css("#ffb347") },
+      { name: "Inbound", P: mkPath(HZ_IN), gateLL: [26.28, 57.04], col: css("#8fd3f4") },
+    ];
+    HZ_LANES.forEach((L) => (L.gateS = projectPath(L.P, L.gateLL)));
+    const HZ_STRAIT = [[26.2, 55.6], [26.2, 57.1]]; // slow zone between these longitudes
+    const HZ_ZONES = [
+      { la: 26.4, lo: 56.1, R: 55000, name: "Zone A" },
+      { la: 25.55, lo: 57.3, R: 70000, name: "Zone B" },
+    ];
+    const HZ_LEVEL = { off: 0, mod: 0.55, heavy: 1 };
+    const HZ_HEADWAY = { off: 9, mod: 14, heavy: 24 }; // minutes between ships entering the strait
+    const HZ_DEMAND = { normal: 16, surge: 9 }; // minutes between arrivals per lane
+    const HZ_CRUISE = 14 * KN;
+    const HZ_SLOW = 10 * KN;
+    const HZ_TLX = 360;
+    const hz = { jam: "mod", dem: "normal", view: "fused", W: 0, last: T, sel: null, exits: [], logIdx: 0, follow: false };
+    const hzSlowLon = [56.0, 56.9];
+    const hzShips = [];
+    let hzK = 0;
+    for (let i = 0; i < 160; i++) {
+      hzShips.push({
+        i, lane: i % 2, tracked: Math.floor(i / 2) % 3 === 0, active: false, id: "", s: 0, v: 0, vf: 1, t0: 0, stallUntil: 0,
+        la: 0, lo: 0, brg: 0, pos: cart(26.4, 55.2, 11), vis: cart(26.4, 55.2, 11), rep: cart(26.4, 55.2, 11), q: null,
+        inten: 0, gerr: 0, gang: 0, gwalk: 0, fe: 4, det: false, aisDark: false, aisSet: false, linkTxt: "SATCOM", jammedLink: false, passed: false, kn: 0, sampleAt: 0,
+      });
+    }
+    HZ_LANES.forEach((L, li) => {
+      L.spawnT = 0;
+      L.gateAt = 0;
+      L.ships = hzShips.filter((s) => s.lane === li);
+    });
+    const hzGW = cart(23.6, 58.6, 0);
+    const hzSat = satLink("hormuz", () => (hz.sel && hz.sel.active ? hz.sel.pos : hzGW), [() => hzGW], () => false);
+    const hzLevel = () => HZ_LEVEL[hz.jam];
+    function hzInten(la, lo) {
+      let m = 0;
+      HZ_ZONES.forEach((z) => {
+        const dx = (lo - z.lo) * 111320 * COSL;
+        const dy = (la - z.la) * 111320;
+        const d = Math.hypot(dx, dy) / (z.R * (0.7 + 0.5 * hzLevel()));
+        m = Math.max(m, ss(1 - d));
+      });
+      return m * hzLevel();
+    }
+    function hzPose(sh) {
+      const L = HZ_LANES[sh.lane];
+      const pa = pathAt(L.P, sh.s);
+      sh.la = pa.la;
+      sh.lo = pa.lo;
+      sh.brg = pa.brg;
+      sh.pos = cart(pa.la, pa.lo, 11);
+      sh.q = hprQ(sh.pos, pa.brg - 90);
+      const e = sh.gerr * Math.cos(sh.gang) + sh.gwalk;
+      const n = sh.gerr * Math.sin(sh.gang) - sh.gwalk * 0.6;
+      const [rl, ro] = offsetLL(pa.la, pa.lo, e, n);
+      sh.rep = cart(rl, ro, 11);
+      sh.vis = hz.view === "gnss" && sh.tracked ? sh.rep : sh.pos;
+    }
+    function hzSpawn(L, li) {
+      const sh = L.ships.find((x) => !x.active);
+      if (!sh) return;
+      sh.active = true;
+      sh.s = 0;
+      sh.v = HZ_CRUISE * 0.95;
+      sh.vf = 0.92 + Math.random() * 0.14;
+      sh.t0 = hz.W;
+      sh.stallUntil = 0;
+      sh.gerr = 0;
+      sh.gwalk = 0;
+      sh.gang = Math.random() * 6.283;
+      sh.fe = 4;
+      sh.det = false;
+      sh.aisDark = false;
+      sh.aisSet = false;
+      sh.passed = false;
+      sh.id = sh.tracked ? "LB-" + (601 + hzK % 90) : "AIS-" + (4100 + hzK);
+      hzK++;
+      hzPose(sh);
+    }
+    function hzStep(dw) {
+      hz.W += dw;
+      const dem = HZ_DEMAND[hz.dem] * 60;
+      const head = HZ_HEADWAY[hz.jam] * 60;
+      HZ_LANES.forEach((L, li) => {
+        L.spawnT -= dw;
+        if (L.spawnT <= 0) {
+          hzSpawn(L, li);
+          L.spawnT = dem * (0.75 + 0.5 * Math.random());
+        }
+        const act = L.ships.filter((s) => s.active).sort((a, b) => b.s - a.s);
+        act.forEach((sh, i) => {
+          const lead = act[i - 1];
+          const lon = sh.lo;
+          const slow = lon > hzSlowLon[0] && lon < hzSlowLon[1];
+          let vd = (slow ? HZ_SLOW : HZ_CRUISE) * sh.vf;
+          if (lead) vd = Math.min(vd, lead.v + Math.max(0, lead.s - sh.s - 1400) / 70);
+          let s1 = sh.s + sh.v * dw;
+          if (!sh.passed && sh.s < L.gateS && s1 >= L.gateS - 30) {
+            if (hz.W < L.gateAt) {
+              vd = 0;
+              s1 = Math.min(s1, L.gateS - 30);
+            } else {
+              sh.passed = true;
+              L.gateAt = hz.W + head;
+            }
+          }
+          if (hz.W < sh.stallUntil) {
+            vd = 0;
+            sh.v = 0;
+            s1 = sh.s;
+          }
+          const dv = vd - sh.v;
+          sh.v += Math.sign(dv) * Math.min(Math.abs(dv), 0.012 * dw * 8);
+          if (vd === 0 && sh.v < 0.05) sh.v = 0;
+          if (lead) s1 = Math.min(s1, lead.s - 900);
+          sh.s = Math.max(sh.s, s1);
+          if (sh.s >= L.P.total - 5) {
+            sh.active = false;
+            hz.exits.push({ t: hz.W, tt: hz.W - sh.t0 });
+            if (hz.exits.length > 80) hz.exits.shift();
+            if (hz.sel === sh) hz.sel = null;
+            return;
+          }
+          hzPose(sh);
+          // contested-environment model
+          sh.kn = sh.v / KN;
+          sh.inten = hzInten(sh.la, sh.lo);
+          const target = sh.inten > 0.12 ? sh.inten * 24000 : 0;
+          sh.gerr += (target - sh.gerr) * (1 - Math.exp(-dw / 260));
+          sh.gwalk += (Math.random() - 0.5) * 500 * Math.min(1, sh.inten * 2) - sh.gwalk * 0.01;
+          if (sh.inten > 0.55 && !sh.aisSet) {
+            sh.aisSet = true;
+            sh.aisDark = Math.random() < 0.45;
+          } else if (sh.inten < 0.1 && sh.aisSet) {
+            sh.aisSet = false;
+            sh.aisDark = false;
+          }
+          sh.jammedLink = sh.inten > 0.72;
+          if (sh.tracked) {
+            const was = sh.det;
+            sh.det = sh.gerr > 350;
+            if (sh.det) sh.fe = Math.min(140, sh.fe + (dw / 60) * 0.9);
+            else sh.fe += (4 - sh.fe) * (1 - Math.exp(-dw / 120));
+            if (sh.det && !was) {
+              log("hormuz", sh.id + ": GNSS spoofing suspected · using inertial + cross-checks");
+              hevent(sh.id, { w: hz.W, y: sh.gerr / 1000, kind: "spoof", color: "#ff6b5b" });
+            } else if (!sh.det && was) log("hormuz", sh.id + ": GNSS consistent again · fused track re-anchored");
+            sh.linkTxt = sh.jammedLink ? "SATCOM degraded · buffering" : hzSat.ok && hz.sel === sh ? "SATCOM · SAT-" + (hzSat.a + 1) : "SATCOM";
+            if (hz.W >= sh.sampleAt) {
+              sh.sampleAt = hz.W + 120;
+              hpush(sh.id, { w: hz.W, err: sh.gerr / 1000, fe: sh.fe / 1000, kn: sh.kn });
+            }
+          }
+        });
+      });
+    }
+    let hzWarm = false;
+    function hzWarmup() {
+      for (let t = 0; t < 12 * 3600; t += 25) hzStep(25);
+      hzWarm = true;
+      feedLog.hormuz.length = 0;
+      log("hormuz", "Fleet online · SATCOM link manager armed");
+    }
+    function tickHormuz() {
+      const dt = clamp(T - hz.last, 0, 0.1);
+      hz.last = T;
+      const dw = dt * HZ_TLX;
+      const n = Math.max(1, Math.ceil(dw / 5));
+      for (let i = 0; i < n; i++) hzStep(dw / n);
+      if (!hz.sel || !hz.sel.active) {
+        hz.sel = hzShips.find((s) => s.active && s.tracked && s.s > 15000) || hzShips.find((s) => s.active && s.tracked) || null;
+      }
+      if (hz.sel) hzSat.eval();
+      if (hz.follow && hz.sel) hz.focus = hz.sel.vis;
+    }
+
+    // ---- entities ----
+    HZ_LANES.forEach((L) => {
+      add("hormuz", { polyline: { positions: C.Cartesian3.fromDegreesArray(L.P.pts.flatMap(([la, lo]) => [lo, la])), width: 3, clampToGround: true, material: new C.PolylineDashMaterialProperty({ color: L.col.withAlpha(0.85), dashLength: 22 }) } });
+      const g = pathAt(L.P, L.gateS);
+      const ang = ((g.brg + 90) * Math.PI) / 180;
+      const [la1, lo1] = offsetLL(g.la, g.lo, Math.sin(ang) * 6000, Math.cos(ang) * 6000);
+      const [la2, lo2] = offsetLL(g.la, g.lo, -Math.sin(ang) * 6000, -Math.cos(ang) * 6000);
+      add("hormuz", { polyline: { positions: C.Cartesian3.fromDegreesArray([lo1, la1, lo2, la2]), width: 4, clampToGround: true, material: new C.PolylineGlowMaterialProperty({ glowPower: 0.2, color: YEL }) } });
+      add("hormuz", {
+        position: cart(g.la, g.lo, 600),
+        label: { text: CP(() => L.name + " entry gate · min spacing " + HZ_HEADWAY[hz.jam] + " min"), font: MONO, fillColor: WHITE, showBackground: true, backgroundColor: DARK.withAlpha(0.82), backgroundPadding: new C.Cartesian2(7, 4), verticalOrigin: C.VerticalOrigin.BOTTOM, pixelOffset: new C.Cartesian2(0, -8), distanceDisplayCondition: new C.DistanceDisplayCondition(0, 600000), disableDepthTestDistance: INF },
+      });
+    });
+    HZ_ZONES.forEach((z) => {
+      const r = () => z.R * (0.7 + 0.5 * hzLevel());
+      add("hormuz", { position: cart(z.la, z.lo, 0), ellipse: { semiMajorAxis: CP(r), semiMinorAxis: CP(r), height: 1, material: new C.ColorMaterialProperty(CP(() => RED.withAlpha(0.1 + 0.14 * hzLevel() * (0.6 + 0.4 * Math.sin(T * 2.2))))) , outline: true, outlineColor: RED.withAlpha(0.6) } }, () => hzLevel() > 0);
+      add("hormuz", { position: cart(z.la, z.lo, 900), label: { text: CP(() => "GNSS interference (" + z.name + ", simulated)"), font: MONO, fillColor: css("#ffb3a8"), outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 700000), disableDepthTestDistance: INF } }, () => hzLevel() > 0);
+    });
+    [["Strait of Hormuz", 26.55, 56.4, "≈ 21 nautical miles at its narrowest"], ["Persian Gulf", 26.6, 54.2, ""], ["Gulf of Oman", 25.1, 57.9, ""], ["Fujairah anchorage", 25.15, 56.5, ""]].forEach(([n, la, lo, sub]) =>
+      add("hormuz", { position: cart(la, lo, 0), label: { text: n + (sub ? "\n" + sub : ""), font: "600 12px Inter, system-ui, sans-serif", fillColor: css("#dbe9f4"), outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new C.Cartesian2(0, -4), distanceDisplayCondition: new C.DistanceDisplayCondition(0, 900000), disableDepthTestDistance: INF } })
+    );
+    const hzColor = (sh) => (hz.view === "gnss" && sh.tracked ? RED : sh.tracked ? (sh.det ? AMB : SKY) : sh.aisDark ? css("#8a9aa8", 0.35) : css("#c2ccd4", 0.95));
+    hzShips.forEach((sh) => {
+      const act = () => sh.active;
+      add("hormuz", { position: CP(() => sh.vis), orientation: CP(() => sh.q), box: { dimensions: new C.Cartesian3(300, 48, 24), material: sh.tracked ? css("#3a4a5a") : css("#2a3138"), outline: true, outlineColor: EDGE, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 40000) } }, act);
+      const pt = add("hormuz", {
+        position: CP(() => sh.vis),
+        point: { pixelSize: sh.tracked ? 8 : 5, color: CP(() => hzColor(sh)), outlineColor: WHITE.withAlpha(0.7), outlineWidth: sh.tracked ? 1.5 : 0, disableDepthTestDistance: INF },
+      }, act);
+      pt._lb = { scn: "hormuz", sh };
+      if (sh.tracked) {
+        add("hormuz", { position: CP(() => sh.vis), point: { pixelSize: 10, color: C.Color.TRANSPARENT, outlineColor: CP(() => (sh.det ? AMB : SKY).withAlpha(0.15 + 0.85 * (1 - ((T / 1.8 + sh.i * 0.13) % 1)))), outlineWidth: CP(() => 3 + 9 * ((T / 1.8 + sh.i * 0.13) % 1)), disableDepthTestDistance: INF } }, act);
+        add("hormuz", { position: CP(() => sh.rep), point: { pixelSize: 7, color: RED.withAlpha(0.9), outlineColor: WHITE, outlineWidth: 1, disableDepthTestDistance: INF } }, () => sh.active && hz.view === "fused" && sh.gerr > 250);
+        add("hormuz", { polyline: { positions: CP(() => [sh.pos, sh.rep]), width: 1.5, material: new C.PolylineDashMaterialProperty({ color: RED.withAlpha(0.8), dashLength: 8 }) } }, () => sh.active && hz.view === "fused" && sh.gerr > 250);
+        add("hormuz", { position: CP(() => sh.pos), point: { pixelSize: 5, color: WHITE.withAlpha(0.8), outlineColor: DARK, outlineWidth: 1, disableDepthTestDistance: INF } }, () => sh.active && hz.view === "gnss" && sh.gerr > 250);
+      }
+    });
+    add("hormuz", {
+      position: CP(() => (hz.sel ? upBy(hz.sel.vis, 800) : hzGW)),
+      label: {
+        text: CP(() => {
+          const s = hz.sel;
+          if (!s) return "";
+          return "● TRACKED · LuminaBox " + s.id + "\n" + s.kn.toFixed(0) + " kn · fused ±" + s.fe.toFixed(0) + " m · GNSS off by " + (s.gerr / 1000).toFixed(0) + " km";
+        }),
+        font: MONO,
+        fillColor: WHITE,
+        showBackground: true,
+        backgroundColor: DARK.withAlpha(0.85),
+        backgroundPadding: new C.Cartesian2(8, 5),
+        pixelOffset: new C.Cartesian2(0, -16),
+        verticalOrigin: C.VerticalOrigin.BOTTOM,
+        distanceDisplayCondition: new C.DistanceDisplayCondition(0, 900000),
+        disableDepthTestDistance: INF,
+      },
+    }, () => !!hz.sel && hz.sel.active);
+
+    function hzStats() {
+      const win = hz.exits.filter((e) => hz.W - e.t < 3600);
+      const tp = win.length;
+      const last = hz.exits.slice(-16);
+      const tt = last.length ? last.reduce((a, e) => a + e.tt, 0) / last.length / 3600 : 0;
+      const act = hzShips.filter((s) => s.active);
+      const q = act.filter((s) => s.v < 0.4 && !s.passed && s.s > HZ_LANES[s.lane].gateS - 90000).length;
+      const trk = act.filter((s) => s.tracked);
+      const degraded = trk.filter((s) => s.gerr > 350).length;
+      const dark = act.filter((s) => s.aisDark).length;
+      return { tp, tt, q, n: act.length, trk: trk.length, degraded, dark, demand: 120 / HZ_DEMAND[hz.dem] };
+    }
+    function hzChart(sh) {
+      const h = HS(sh.id);
+      const s = h.s;
+      if (s.length < 3) return '<div class="hc-empty">collecting history…</div>';
+      const x0 = s[0].w;
+      const x1 = s[s.length - 1].w;
+      const mk = (key, color) => ({ pts: s.map((p) => [p.w, p[key]]), color });
+      const span = (x1 - x0) / 3600;
+      return chart({ xr: [x0, x1 + 1e-6], yr: [0, 30], yfmt: (v) => v.toFixed(0), series: [mk("err", "#ff6b5b"), mk("fe", "#41b7e3")], thresholds: [{ y: 0.35, color: "#ffb347", label: "spoof detect" }], events: h.ev.map((e) => ({ x: e.w, y: Math.min(29, e.y), color: e.color })).filter((e) => e.x >= x0), xl: ["−" + span.toFixed(1) + " h", "now"], aria: "Position error: GNSS-only versus LuminaBox fused" });
+    }
+    function hzSpeedChart(sh) {
+      const s = HS(sh.id).s;
+      if (s.length < 3) return "";
+      const x0 = s[0].w;
+      const x1 = s[s.length - 1].w;
+      return chart({ xr: [x0, x1 + 1e-6], yr: [0, 16], yfmt: (v) => v.toFixed(0), series: [{ pts: s.map((p) => [p.w, p.kn]), color: "#ffb347" }], thresholds: [{ y: 10, color: "#8fd3f4", label: "strait limit 10 kn" }], xl: ["−" + ((x1 - x0) / 3600).toFixed(1) + " h", "now"], aria: "Ship speed history" });
+    }
+    function feedHormuz() {
+      const st = hzStats();
+      const s = hz.sel;
+      const gate = HZ_HEADWAY[hz.jam];
+      let html =
+        '<div class="kvs">' +
+        kv("Throughput", st.tp + " ships/h", st.tp < st.demand * 0.8 ? "alert" : "") +
+        kv("Arriving", st.demand.toFixed(1) + " ships/h") +
+        kv("Waiting at gates", st.q + " ships", st.q > 4 ? "alert" : "") +
+        kv("Avg transit", st.tt.toFixed(1) + " h") +
+        kv("Gate spacing", gate + " min", hz.jam !== "off" ? "alert" : "") +
+        kv("Ships in view", st.n) +
+        kv("AIS dark", st.dark + " of " + st.n, st.dark > 0 ? "alert" : "") +
+        kv("LuminaBox fleet", st.trk + " tracked · " + st.degraded + " GNSS-degraded", st.degraded > 0 ? "alert" : "") +
+        "</div>";
+      if (s) {
+        html +=
+          '<div class="sec-h">Selected tanker</div>' +
+          '<div class="lb-asset"><span class="lb-badge ' + (s.det ? "alert" : "ok") + '">' + (s.det ? "INERTIAL" : "GNSS OK") + "</span><b>" + s.id + '</b><small>' + HZ_LANES[s.lane].name + " lane · click any blue ship on the map to switch · " +
+          '<button type="button" class="tc" data-hznav="-1">◀</button> <button type="button" class="tc" data-hznav="1">▶</button></small></div>' +
+          '<div class="kvs">' +
+          kv("Speed", s.kn.toFixed(1) + " kn") +
+          kv("Fused position", "±" + s.fe.toFixed(0) + " m") +
+          kv("GNSS-only error", (s.gerr / 1000).toFixed(1) + " km", s.gerr > 350 ? "alert" : "") +
+          kv("Interference", Math.round(s.inten * 100) + " %") +
+          kv("Link", s.linkTxt, s.jammedLink ? "alert" : "") +
+          kv("AIS", s.aisDark ? "dark" : "broadcasting", s.aisDark ? "alert" : "") +
+          "</div>" +
+          hcBlock('Position error (km) <i class="lg-r"></i>GNSS-only <i class="lg-a"></i>LuminaBox fused', hzChart(s)) +
+          hcBlock("Speed (kn)", hzSpeedChart(s));
+      }
+      html += '<p class="lb-hint">The gate sets how many minutes must pass between ships entering the strait. Heavy interference means less certainty about positions, so spacing grows and a queue builds.</p>' + logHTML("hormuz");
+      return html;
+    }
+    function hzStall() {
+      const L = HZ_LANES[0];
+      const c = L.ships.filter((s) => s.active && s.passed && s.s < L.gateS + 70000).sort((a, b) => b.s - a.s);
+      const sh = c[0] || L.ships.find((s) => s.active);
+      if (!sh) return;
+      sh.stallUntil = hz.W + 50 * 60;
+      log("hormuz", (sh.tracked ? sh.id : "A tanker") + " stalled in the outbound lane · traffic behind it is queuing");
+      if (sh.tracked) hevent(sh.id, { w: hz.W, y: 0.2, kind: "stall", color: "#ffb347" });
+    }
+    function hzSet(k, v) {
+      if (k === "jam") hz.jam = v;
+      if (k === "dem") hz.dem = v;
+      if (k === "view") hz.view = v;
+      document.querySelectorAll("#ctl-hormuz [data-hz]").forEach((b) => {
+        const [kk, vv] = b.dataset.hz.split(":");
+        if (kk === k) {
+          b.classList.toggle("is-on", vv === v);
+          b.setAttribute("aria-pressed", String(vv === v));
+        }
+      });
+      hzShips.forEach((s) => s.active && hzPose(s));
+      log("hormuz", k === "jam" ? "Interference set to " + { off: "off", mod: "moderate", heavy: "heavy" }[v] : k === "dem" ? "Demand set to " + v : "Showing " + (v === "gnss" ? "GNSS-only track" : "LuminaBox fused track"));
+    }
+    hzWarmup();
+
+    /* =====================================================================
        UI wiring
        ===================================================================== */
     const overlay = $("#lb-overlay");
@@ -1860,11 +2189,13 @@
     const META = {
       road: { title: "LuminaBox convoy", sub: "Tracking 10 TEUs \u00B7 warehouse \u2192 VAB \u2192 pad", chip: "Time-lapse \u00B7 real OSM roads \u00B7 simulated", follow: "Follow selected TEU (scroll to zoom)" },
       warehouse: { title: "LuminaBox inventory", sub: "Tracking 36 TEUs \u00B7 KSC Logistics Facility", chip: "Simulated inventory feed · click a container", follow: null },
+      hormuz: { title: "LuminaBox tanker fleet", sub: "Strait of Hormuz \u00B7 contested navigation", chip: "Time-lapse \u00D7360 \u00B7 simulated \u00B7 notional interference", follow: "Follow selected tanker (scroll to zoom)" },
       shipping: { title: "LuminaBox fleet", sub: "Tracking " + SHIP_TEUS + " TEUs \u00B7 3 routes to Cape Canaveral", chip: "Time-lapse \u00B7 simulated \u00B7 SATCOM at sea", follow: null },
       launch: { title: "LuminaBox LB-201–206", sub: "Tracking 6 TEUs · Cape → Japan", chip: "Notional trajectory · simulated", follow: "Director camera (scroll to zoom)" },
     };
     const ctlForecast = $("#ctl-forecast");
     const ctlMission = $("#ctl-mission");
+    const ctlHz = $("#ctl-hormuz");
     const phaseRow = $("#phase-row");
     const wxReadout = $("#wx-readout");
 
@@ -1889,7 +2220,11 @@
         cam.follow = null;
         releaseCamera();
       }
-      if (prev === "launch" || prev === "shipping") viewer.scene.screenSpaceCameraController.maximumZoomDistance = 160000;
+      if (prev === "hormuz" && hz.follow) {
+        hz.follow = false;
+        releaseCamera();
+      }
+      if (prev === "launch" || prev === "shipping" || prev === "hormuz") viewer.scene.screenSpaceCameraController.maximumZoomDistance = 160000;
       if (prev === "road" && cam.roadFollow) {
         cam.roadFollow = false;
         releaseCamera();
@@ -1905,17 +2240,20 @@
       });
       const m = META[id];
       $("#lb-title").textContent = m.title;
+      const lgA = document.querySelector(".lb-legend li");
+      if (lgA && lgA.lastChild) lgA.lastChild.textContent = id === "hormuz" ? "Tanker tracked by a LuminaBox" : "TEU tracked by a LuminaBox";
       $("#lb-sub").textContent = m.sub;
       $("#lb-chip").textContent = m.chip;
       followBtn.hidden = !m.follow;
       followBtn.textContent = m.follow || "";
       followBtn.setAttribute("aria-pressed", id === "launch" ? "true" : "false");
       ctlForecast.hidden = id !== "road";
+      if (ctlHz) ctlHz.hidden = id !== "hormuz";
       ctlMission.hidden = id !== "launch";
       phaseRow.hidden = id !== "launch";
-      wxReadout.hidden = id === "launch" || id === "shipping";
+      wxReadout.hidden = id === "launch" || id === "shipping" || id === "hormuz";
       // weather overlays: hidden during the global launch view, restored otherwise
-      if (id === "launch" || id === "shipping") {
+      if (id === "launch" || id === "shipping" || id === "hormuz") {
         layers.wind.forEach((e) => (e.show = false));
         layers.precip.forEach((e) => (e.show = false));
         layers.rocket.forEach((e) => (e.show = id !== "launch"));
@@ -1941,6 +2279,8 @@
           duration: 1.8,
           offset: new C.HeadingPitchRange(C.Math.toRadians(25), C.Math.toRadians(-42), 190),
         });
+      } else if (id === "hormuz") {
+        viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(26.0, 56.4, 0), 1), { duration: 2.2, offset: new C.HeadingPitchRange(0, C.Math.toRadians(-82), 300000) });
       } else if (id === "shipping") {
         flyShipOverview(2.4);
       } else {
@@ -1967,6 +2307,7 @@
       if (active === "road") tickRoad();
       else if (active === "warehouse") tickWarehouse();
       else if (active === "shipping") tickShipping();
+      else if (active === "hormuz") tickHormuz();
       else tickLaunch();
     }
 
@@ -1984,6 +2325,10 @@
       }
       if (active === "launch") {
         cam.director = on;
+        if (!on) releaseCamera();
+      }
+      if (active === "hormuz") {
+        hz.follow = on;
         if (!on) releaseCamera();
       }
     });
@@ -2028,6 +2373,15 @@
         lsel = parseInt(ls.dataset.lsel, 10);
         return;
       }
+      const nv = ev.target.closest("[data-hznav]");
+      if (nv && active === "hormuz") {
+        const tr = hzShips.filter((s) => s.active && s.tracked).sort((a, b) => a.i - b.i);
+        if (tr.length) {
+          const k = tr.indexOf(hz.sel);
+          hz.sel = tr[(k + parseInt(nv.dataset.hznav, 10) + tr.length) % tr.length];
+        }
+        return;
+      }
       const sv = ev.target.closest("svg[data-scrub]");
       if (sv && active === "launch") {
         const r = sv.getBoundingClientRect();
@@ -2037,6 +2391,16 @@
         $("#mission-t").value = Math.round(f * 1000);
       }
     });
+    if (ctlHz)
+      ctlHz.addEventListener("click", (ev) => {
+        const b = ev.target.closest("button");
+        if (!b) return;
+        if (b.id === "hz-stall") return hzStall();
+        if (b.dataset.hz) {
+          const [k, v] = b.dataset.hz.split(":");
+          hzSet(k, v);
+        }
+      });
     const lf = $("#link-filter");
     function setLinkFilter(v) {
       linkFilter = v;
@@ -2056,6 +2420,7 @@
     const TECH = {
       road: [["LuminaBox sensing", "luminabox.html#luminabox"], ["Road health", "luminabox.html#roadhealth"], ["Digital thread", "digital-thread.html"], ["Planning", "digital-thread.html#planning"], ["Connectivity", "luminabox.html#arch"]],
       warehouse: [["LuminaBox sensing", "luminabox.html#luminabox"], ["Digital thread", "digital-thread.html"], ["Connectivity", "luminabox.html#arch"]],
+      hormuz: [["LuminaBox sensing", "luminabox.html#luminabox"], ["Contested tracking", "luminabox.html#contested"], ["Connectivity", "luminabox.html#arch"]],
       shipping: [["Logistics", "luminabox.html#logistics"], ["Connectivity", "luminabox.html#arch"], ["Digital thread", "digital-thread.html"]],
       launch: [["Real-time CFD", "cfd.html"], ["Connectivity", "luminabox.html#arch"], ["Digital thread", "digital-thread.html"]],
     };
@@ -2076,6 +2441,8 @@
         if (b) b.click();
       }
       if (p.link) setLinkFilter(p.link);
+      if (p.jam) hzSet("jam", p.jam);
+      if (p.dem) hzSet("dem", p.dem);
       const fire = (sel, v) => {
         const e = document.querySelector(sel);
         if (e && v != null) {
@@ -2096,7 +2463,7 @@
         return e ? parseInt(e.value, 10) || d : d;
       };
       const res = document.querySelector("#res-mode .is-on");
-      return { scn: active, site: api.getSelected(), res: res ? res.dataset.res : "coarse", link: linkFilter, spd: val("#wi-spd", 0), dir: val("#wi-dir", 90), hour: val("#hour", 0) };
+      return { scn: active, site: api.getSelected(), res: res ? res.dataset.res : "coarse", link: linkFilter, spd: val("#wi-spd", 0), dir: val("#wi-dir", 90), hour: val("#hour", 0), jam: hz.jam, dem: hz.dem };
     };
     // minimize the tracking card so it never hides the map (starts minimized on phones)
     const lbMin = $("#lb-min");
@@ -2124,12 +2491,16 @@
       const tag = picked && picked.id && picked.id._lb;
       if (tag && tag.scn === "warehouse" && active === "warehouse") selected = tag.b;
       if (tag && tag.scn === "road" && active === "road") road.sel = tag.k;
+      if (tag && tag.scn === "hormuz" && active === "hormuz" && tag.sh.tracked) hz.sel = tag.sh;
     }, C.ScreenSpaceEventType.LEFT_CLICK);
 
     // render loop + feed
     viewer.scene.preRender.addEventListener(() => {
       T = performance.now() / 1000;
       tickActive();
+      if (active === "hormuz" && hz.follow && hz.sel) {
+        viewer.camera.lookAt(hz.sel.vis, new C.HeadingPitchRange(C.Math.toRadians(hz.sel.brg + 150), C.Math.toRadians(-38), 28000 * cam.zoom));
+      }
       if (active === "shipping" && cam.follow != null) {
         const r = ROUTES[cam.follow];
         const b = r.b[0];
@@ -2146,7 +2517,7 @@
     viewer.canvas.addEventListener(
       "wheel",
       (ev) => {
-        if ((active === "road" && cam.roadFollow) || (active === "launch" && cam.director && cam.ready) || (active === "shipping" && cam.follow != null)) {
+        if ((active === "road" && cam.roadFollow) || (active === "launch" && cam.director && cam.ready) || (active === "shipping" && cam.follow != null) || (active === "hormuz" && hz.follow)) {
           cam.zoom = clamp(cam.zoom * (ev.deltaY > 0 ? 1.12 : 0.89), 0.25, 4);
           ev.preventDefault();
           ev.stopImmediatePropagation();
@@ -2158,7 +2529,7 @@
       applyVisibility();
     }, 400);
     setInterval(() => {
-      $("#lb-feed-body").innerHTML = active === "road" ? feedRoad() : active === "warehouse" ? feedWarehouse() : active === "shipping" ? feedShipping() : feedLaunch();
+      $("#lb-feed-body").innerHTML = active === "road" ? feedRoad() : active === "warehouse" ? feedWarehouse() : active === "shipping" ? feedShipping() : active === "hormuz" ? feedHormuz() : feedLaunch();
     }, 250);
 
     overlay.hidden = false;

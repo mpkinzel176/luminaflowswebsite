@@ -7,7 +7,7 @@
   if (q.get("embed") === "1") document.body.classList.add("embed");
 
   const preset = {};
-  ["scn", "site", "res", "link"].forEach((k) => {
+  ["scn", "site", "res", "link", "jam", "dem"].forEach((k) => {
     if (q.get(k)) preset[k] = q.get(k);
   });
   ["spd", "dir", "hour"].forEach((k) => {
@@ -30,6 +30,10 @@
       u.searchParams.set("dir", st.dir);
     }
     if (st.hour > 0) u.searchParams.set("hour", st.hour);
+    if (st.scn === "hormuz") {
+      if (st.jam && st.jam !== "mod") u.searchParams.set("jam", st.jam);
+      if (st.dem && st.dem !== "normal") u.searchParams.set("dem", st.dem);
+    }
     return u.toString();
   };
 

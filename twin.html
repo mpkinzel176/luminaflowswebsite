@@ -90,6 +90,7 @@
                 <button class="stab" role="tab" aria-selected="false" data-scn="warehouse" type="button">Warehouse</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="shipping" type="button">Shipping to Cape</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="hormuz" type="button">Strait of Hormuz</button>
               </div>
               <div class="tech-chips" id="tech-chips"></div>
               <div class="cesium-wrap">
@@ -124,6 +125,25 @@
                 <input id="mission-t" type="range" min="0" max="1000" step="1" value="0" />
                 <output id="mission-out">T+00:00</output>
                 <button id="mission-play" type="button" aria-pressed="false">Play</button>
+              </div>
+              <div class="hz-ctl" id="ctl-hormuz" hidden>
+                <div class="hz-group"><span>GNSS interference</span>
+                  <div class="seg3">
+                    <button type="button" data-hz="jam:off" aria-pressed="false">Off</button>
+                    <button type="button" class="is-on" data-hz="jam:mod" aria-pressed="true">Moderate</button>
+                    <button type="button" data-hz="jam:heavy" aria-pressed="false">Heavy</button>
+                  </div></div>
+                <div class="hz-group"><span>Traffic demand</span>
+                  <div class="seg3">
+                    <button type="button" class="is-on" data-hz="dem:normal" aria-pressed="true">Normal</button>
+                    <button type="button" data-hz="dem:surge" aria-pressed="false">Surge</button>
+                  </div></div>
+                <div class="hz-group"><span>Operator sees</span>
+                  <div class="seg3">
+                    <button type="button" class="is-on" data-hz="view:fused" aria-pressed="true">LuminaBox fused</button>
+                    <button type="button" data-hz="view:gnss" aria-pressed="false">GNSS only</button>
+                  </div></div>
+                <button type="button" id="hz-stall" class="see-model">Stall a tanker</button>
               </div>
               <div class="stage-controls" id="ctl-forecast">
                 <label for="hour">Forecast time</label>

@@ -2404,3 +2404,103 @@ h1 {
     gap: 1rem;
   }
 }
+
+/* ---------- Strait of Hormuz controls ---------- */
+.hz-ctl {
+  padding: 0.7rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.8rem 1.4rem;
+  border-top: 1px solid var(--line);
+}
+
+.hz-group {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.hz-group > span {
+  color: var(--steel);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.seg3 {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.seg3 button {
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-right: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seg3 button:last-child {
+  border-right: 0;
+}
+
+.seg3 button.is-on {
+  color: var(--bg);
+  background: var(--yellow);
+}
+
+.hc-title .lg-r {
+  background: #ff6b5b;
+}
+
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cmp-table th,
+.cmp-table td {
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.cmp-table thead th {
+  color: var(--steel);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cmp-table tbody th {
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cmp-table .bad {
+  color: #ff9d90;
+}
+
+.cmp-table .good {
+  color: #7fe3a6;
+}
+
+.honest {
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--yellow);
+  border-radius: 0 6px 6px 0;
+  background: rgba(255, 223, 60, 0.07);
+  color: #d8e6f1 !important;
+  font-size: 0.9rem;
+}

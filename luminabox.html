@@ -228,6 +228,41 @@
           </figure>
         </article>
 
+        <!-- Contested environments -->
+        <article class="solution" id="contested">
+          <div class="solution-copy">
+            <h3>Tracking ships when GPS can't be trusted</h3>
+            <p>
+              Around a fifth of the world's oil passes through the Strait of Hormuz, according to the U.S. Energy
+              Information Administration. At its narrowest the strait is about 21 nautical miles wide, and the shipping
+              lanes are only two miles wide in each direction. That is a natural bottleneck, and jamming and spoofing of
+              satellite navigation have been widely reported in the region.
+            </p>
+            <p>
+              A tracker that trusts GPS alone can be led astray. In our model a LuminaBox cross-checks GNSS against an
+              inertial sensor, notices when they disagree, and falls back to dead reckoning until GNSS is consistent
+              again. It keeps readings in a buffer when a link drops and sends them when it can. You can turn the
+              interference up and see what happens to the track, and to the queue at the strait.
+            </p>
+            <p class="honest">
+              This is a concept. It assumes a LuminaBox variant with an inertial sensor, and the lanes, spacing rules and
+              interference zones are notional, not real incident data.
+            </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"hormuz","jam":"heavy"}'>See it in the model &rarr;</button></p>
+          </div>
+          <div class="solution-visual contested-vis">
+            <table class="cmp-table">
+              <thead><tr><th></th><th>GNSS only</th><th>LuminaBox fused</th></tr></thead>
+              <tbody>
+                <tr><th>Under spoofing</th><td class="bad">Position off by kilometres</td><td class="good">Flags the mismatch, uses inertial</td></tr>
+                <tr><th>Link drops</th><td class="bad">Gap in the record</td><td class="good">Buffers, then syncs</td></tr>
+                <tr><th>Cross-check</th><td class="bad">None</td><td class="good">Several sources agree</td></tr>
+              </tbody>
+            </table>
+            <p class="visual-caption">The comparison the 3D model plays out.</p>
+          </div>
+        </article>
+
         <!-- Device monitor -->
         <figure class="monitor">
           <div class="monitor-copy">
