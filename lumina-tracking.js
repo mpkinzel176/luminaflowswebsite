@@ -578,7 +578,7 @@
       }
       road.link = L;
     }
-    uplink("road", roadAsset, () => road.link.tgt(), () => active === "road" && road.link.type === "rf" && !!road.link.tgt, { type: "rf" });
+    uplink("road", roadAsset, () => (typeof road.link.tgt === "function" ? road.link.tgt() : bs1), () => active === "road" && road.link.type === "rf" && typeof road.link.tgt === "function", { type: "rf" });
     uplink("road", roadAsset, () => cellRoad, () => active === "road" && road.link.type === "cell", { type: "cell", color: CELLC });
 
     // damaged-road markers (detected from TEU shock readings)
