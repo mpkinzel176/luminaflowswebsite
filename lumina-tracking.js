@@ -27,7 +27,7 @@
     let T = performance.now() / 1000;
     let active = "road";
     let assetsOn = true;
-    const groups = { road: [], warehouse: [], launch: [] };
+    const groups = { road: [], warehouse: [], launch: [], shipping: [], sat: [] };
     const reg = (scn, e, cond) => {
       e._scn = scn;
       e._cond = cond;
@@ -38,7 +38,8 @@
     function applyVisibility() {
       Object.keys(groups).forEach((k) =>
         groups[k].forEach((e) => {
-          e.show = assetsOn && k === active && (!e._cond || e._cond());
+          const on = k === "sat" ? active === "launch" || active === "shipping" : k === active;
+          e.show = assetsOn && on && (!e._cond || e._cond());
         })
       );
     }
@@ -133,8 +134,8 @@
           point: {
             pixelSize: CP(() => (o.size ? o.size() : o.big ? 13 : 8)),
             color: CP(() => col()),
-            outlineColor: WHITE,
-            outlineWidth: 2,
+            outlineColor: o.halo ? CP(() => col().withAlpha(0.15 + 0.85 * (1 - ph()))) : WHITE,
+            outlineWidth: o.halo ? CP(() => 3 + 10 * ph()) : 2,
             disableDepthTestDistance: INF,
             distanceDisplayCondition: o.dist ? new C.DistanceDisplayCondition(0, o.dist) : undefined,
           },
@@ -194,7 +195,7 @@
       return e;
     }
 
-    const feedLog = { road: [], warehouse: [], launch: [] };
+    const feedLog = { road: [], warehouse: [], launch: [], shipping: [] };
     const log = (scn, msg) => {
       feedLog[scn].unshift({ t: new Date(), msg });
       feedLog[scn].length = Math.min(feedLog[scn].length, 6);
@@ -562,6 +563,142 @@
     }
 
     /* =====================================================================
+       SATELLITE RELAY (notional LEO constellation for SATCOM tracking)
+       Each LuminaBox can fall back to SATCOM: asset -> satellite -> (cross-link) -> satellite -> ground gateway.
+       ===================================================================== */
+    const RE = 6378137;
+    const SAT_R = RE + 780e3;
+    const SAT_PLANES = 6;
+    const SAT_PER = 11;
+    const NSAT = SAT_PLANES * SAT_PER;
+    const ORBIT_S = 260; // seconds per orbit on screen (time-lapse)
+    const SAT_INC = C.Math.toRadians(86.4);
+    const DEG = Math.PI / 180;
+    const VIOLET = css("#b58cff");
+    const satP = [];
+    for (let i = 0; i < NSAT; i++) satP.push(new C.Cartesian3());
+    function orbitPoint(p, M, out) {
+      const om = C.Math.toRadians(p * 31.6);
+      const cM = Math.cos(M), sM = Math.sin(M), cO = Math.cos(om), sO = Math.sin(om);
+      const ci = Math.cos(SAT_INC), si = Math.sin(SAT_INC);
+      out.x = SAT_R * (cM * cO - sM * ci * sO);
+      out.y = SAT_R * (cM * sO + sM * ci * cO);
+      out.z = SAT_R * sM * si;
+      return out;
+    }
+    function updateSats() {
+      for (let i = 0; i < NSAT; i++) {
+        const p = Math.floor(i / SAT_PER);
+        const k = i % SAT_PER;
+        orbitPoint(p, 2 * Math.PI * (k / SAT_PER + ((p % 2) * 0.5) / SAT_PER) + (2 * Math.PI * T) / ORBIT_S, satP[i]);
+      }
+    }
+    updateSats();
+    const sp = (i) => satP[i >= 0 ? i : 0];
+    for (let i = 0; i < NSAT; i++) {
+      add("sat", {
+        position: CP(() => satP[i]),
+        point: { pixelSize: 4, color: WHITE.withAlpha(0.85) },
+      });
+    }
+    for (let p = 0; p < SAT_PLANES; p++) {
+      const ring = [];
+      for (let j = 0; j <= 120; j++) ring.push(orbitPoint(p, (2 * Math.PI * j) / 120, new C.Cartesian3()));
+      add("sat", { polyline: { positions: ring, width: 1, material: WHITE.withAlpha(0.1) } });
+    }
+
+    const losBlocked = (a, b) => {
+      const d = C.Cartesian3.subtract(b, a, new C.Cartesian3());
+      const dd = C.Cartesian3.dot(d, d);
+      const t = clamp(-C.Cartesian3.dot(a, d) / dd, 0, 1);
+      return C.Cartesian3.magnitude(madd(a, d, t)) < 6.35e6; // just under the surface: ground assets must not self-block
+    };
+    const elevOf = (g, s) => {
+      const d = C.Cartesian3.subtract(s, g, new C.Cartesian3());
+      return Math.asin(clamp(C.Cartesian3.dot(d, upVec(g)) / C.Cartesian3.magnitude(d), -1, 1));
+    };
+
+    function satLink(scn, assetFn, gwFns, activeFn, onHandover) {
+      const st = { a: -1, b: -1, gw: 0, ok: false, el: 0, next: 0 };
+      const valid = (i, p, needEl) => !losBlocked(p, satP[i]) && (needEl == null || elevOf(p, satP[i]) >= needEl);
+      st.eval = (force) => {
+        if (!force && T < st.next) return st;
+        st.next = T + 0.5;
+        const p = assetFn();
+        const alt = C.Cartographic.fromCartesian(p).height;
+        const needEl = alt < 100e3 ? 8 * DEG : null;
+        const nearest = (from, el) => {
+          let best = -1;
+          let bd = Infinity;
+          for (let i = 0; i < NSAT; i++) {
+            if (!valid(i, from, el)) continue;
+            const d = C.Cartesian3.distance(from, satP[i]);
+            if (d < bd) { bd = d; best = i; }
+          }
+          return { best, bd };
+        };
+        let { best, bd } = nearest(p, needEl);
+        if (best < 0 && needEl != null) ({ best, bd } = nearest(p, 0));
+        if (st.a >= 0 && best >= 0 && valid(st.a, p, needEl) && C.Cartesian3.distance(p, satP[st.a]) < bd * 1.3) best = st.a;
+        if (best !== st.a) {
+          if (st.a >= 0 && best >= 0 && onHandover) onHandover(st.a, best);
+          st.a = best;
+        }
+        st.ok = st.a >= 0;
+        let gi = 0;
+        let gd = Infinity;
+        gwFns.forEach((f, k) => {
+          const d = C.Cartesian3.distance(p, f());
+          if (d < gd) { gd = d; gi = k; }
+        });
+        st.gw = gi;
+        if (st.ok) {
+          const g = gwFns[gi]();
+          if (valid(st.a, g, 5 * DEG)) st.b = st.a;
+          else {
+            const r = nearest(g, 5 * DEG);
+            st.b = r.best >= 0 ? r.best : st.a;
+          }
+          st.el = elevOf(p, satP[st.a]) / DEG;
+        }
+        return st;
+      };
+      const show = () => activeFn() && st.ok;
+      add(scn, { polyline: { positions: CP(() => [assetFn(), sp(st.a)]), width: 2, material: new C.PolylineDashMaterialProperty({ color: VIOLET, dashLength: 16 }) } }, show);
+      add(scn, { polyline: { positions: CP(() => [sp(st.a), sp(st.b)]), width: 2, material: new C.PolylineDashMaterialProperty({ color: VIOLET.withAlpha(0.7), dashLength: 10 }) } }, () => show() && st.b !== st.a);
+      add(scn, { polyline: { positions: CP(() => [sp(st.b), gwFns[st.gw]()]), width: 2, material: new C.PolylineDashMaterialProperty({ color: VIOLET, dashLength: 16 }) } }, show);
+      [() => st.a, () => st.b].forEach((idxFn, n) => {
+        add(
+          scn,
+          {
+            position: CP(() => sp(idxFn())),
+            point: { pixelSize: 9, color: VIOLET, outlineColor: WHITE, outlineWidth: 2 },
+            label: {
+              text: CP(() => "SAT-" + (idxFn() + 1) + (n ? " (gateway)" : "")),
+              font: "600 10px ui-monospace, Consolas, monospace",
+              fillColor: WHITE,
+              outlineColor: DARK,
+              outlineWidth: 3,
+              style: C.LabelStyle.FILL_AND_OUTLINE,
+              pixelOffset: new C.Cartesian2(10, -8),
+              horizontalOrigin: C.HorizontalOrigin.LEFT,
+              distanceDisplayCondition: new C.DistanceDisplayCondition(0, 2.5e7),
+            },
+          },
+          () => show() && (n === 0 || st.b !== st.a)
+        );
+      });
+      [0, 0.5].forEach((k) =>
+        add(
+          scn,
+          { position: CP(() => lin(assetFn(), sp(st.a), (T / 1.2 + k) % 1)), point: { pixelSize: 5, color: WHITE } },
+          show
+        )
+      );
+      return st;
+    }
+
+    /* =====================================================================
        (c) LAUNCH -> JAPAN (notional rocket-cargo delivery)
        ===================================================================== */
     const PAD = SITES.lc39a;
@@ -649,9 +786,8 @@
       veh.vib += rnd(0, 0.05);
       veh.g += rnd(-0.04, 0.04);
       veh.temp = 21 + 6 * bump(0.77, 0.04) + 1.2 * ss((u - 0.1) / 0.12);
-      if (u < 0.22) { veh.link = "BS-1 (RF)"; veh.linkOk = true; }
-      else if (u < 0.86) { veh.link = "Logging · store-and-forward"; veh.linkOk = false; }
-      else { veh.link = "BS-J (RF)"; veh.linkOk = true; }
+      veh.link = "BS-1 (RF)";
+      veh.linkOk = true;
       // TEU transforms
       const wOff = ss((u - 0.925) / 0.05);
       teuIn.forEach(([lx, lz], k) => {
@@ -708,7 +844,7 @@
     add("launch", {
       position: CP(() => upBy(veh.pos, 14)),
       label: {
-        text: CP(() => "● TRACKED · 6 × TEU\nLuminaBox LB-301–306 · " + (veh.linkOk ? "LINK" : "LOGGING")),
+        text: CP(() => "● TRACKED · 6 × TEU\nLuminaBox LB-301–306 · " + launchLinkShort()),
         font: MONO,
         fillColor: WHITE,
         showBackground: true,
@@ -724,8 +860,32 @@
     const bsPad = baseStation("launch", bsP[0], bsP[1], "BS-1 · LC-39A");
     const bsJp = offsetLL(JP.lat, JP.lon, 40, -60);
     const bsJ = baseStation("launch", bsJp[0], bsJp[1], "BS-J · Japan");
-    uplink("launch", () => veh.pos, () => bsPad, () => veh.u < 0.22);
+    uplink("launch", () => veh.pos, () => bsPad, () => veh.u < 0.12);
     uplink("launch", () => veh.pos, () => bsJ, () => veh.u > 0.86);
+    // SATCOM: LuminaBox falls back to the relay constellation from liftoff; re-entry plasma blackout interrupts it
+    const launchSatOn = () => active === "launch" && ((veh.u >= 0.1 && veh.u < 0.745) || veh.u >= 0.79);
+    const launchSat = satLink("launch", () => veh.pos, [() => bsPad, () => bsJ], launchSatOn, (a, b) => log("launch", "SATCOM handover SAT-" + (a + 1) + " \u2192 SAT-" + (b + 1)));
+    const blackout = () => veh.u >= 0.745 && veh.u < 0.79;
+    let wasBlackout = false;
+    function launchLinkShort() {
+      return veh.u < 0.1 ? "RF" : blackout() ? "BLACKOUT" : "SATCOM";
+    }
+    function updateLaunchLink() {
+      if (launchSatOn()) launchSat.eval();
+      const bl = blackout();
+      if (bl !== wasBlackout) {
+        wasBlackout = bl;
+        if (bl) log("launch", "Plasma blackout \u00B7 LuminaBox buffering telemetry");
+        else if (veh.u >= 0.79) log("launch", "Signal re-acquired \u00B7 buffer flushed via SATCOM");
+      }
+      veh.linkOk = !bl;
+      if (veh.u < 0.1) veh.link = "BS-1 (RF)";
+      else if (bl) veh.link = "BLACKOUT \u00B7 buffering";
+      else {
+        const s = launchSat.ok ? "SATCOM \u00B7 SAT-" + (launchSat.a + 1) : "SATCOM";
+        veh.link = veh.u >= 0.86 ? s + " + BS-J (RF)" : s;
+      }
+    }
     // Japan landing zone
     add("launch", {
       position: cart(JP.lat, JP.lon, 0),
@@ -766,7 +926,7 @@
     });
 
     // chase / director cameras (scroll adjusts zoom while active)
-    const cam = { director: true, ready: false, zoom: 1, roadFollow: false };
+    const cam = { director: true, ready: false, zoom: 1, roadFollow: false, follow: null };
     function directorCamera() {
       const u = veh.u;
       const mid = cart((PAD.lat + JP.lat) / 2, (PAD.lon + JP.lon) / 2 + 0, 0);
@@ -800,10 +960,11 @@
         $("#mission-t").value = Math.round(mission.u * 1000);
       }
       updateVehicle(mission.u);
+      updateLaunchLink();
       const ph = PHASES.findIndex((p, i) => mission.u >= p.u0 && (mission.u < p.u1 || i === PHASES.length - 1));
       if (ph !== lastPhase) {
         if (ph >= 0 && lastPhase >= 0 && ph > lastPhase) {
-          const msg = ["", "Liftoff · vibration rising", "Main engine cutoff · coast", "Re-entry interface · logging continues", "Landing burn · link re-acquired", "Landed · offloading TEUs"][ph];
+          const msg = ["", "Liftoff \u00B7 SATCOM engaged", "Main engine cutoff \u00B7 coasting on SATCOM", "Re-entry interface \u00B7 blackout expected", "Landing burn \u00B7 SATCOM re-acquired", "Landed \u00B7 offloading \u00B7 RF + SATCOM at Japan site"][ph];
           if (msg) log("launch", msg);
         }
         lastPhase = ph;
@@ -822,7 +983,7 @@
       const ph = PHASES[Math.max(0, PHASES.findIndex((p, i) => veh.u >= p.u0 && (veh.u < p.u1 || i === PHASES.length - 1)))];
       const delivered = veh.u >= 0.99;
       return (
-        '<div class="lb-asset"><span class="lb-badge ' + (veh.linkOk ? "ok" : "log") + '">' + (veh.linkOk ? "TRACKING" : "LOGGING") + "</span><b>LB-301–306</b><small>6 × TEU · " + ph.name + "</small></div>" +
+        '<div class="lb-asset"><span class="lb-badge ' + (veh.linkOk ? "ok" : "log") + '">' + (veh.linkOk ? "TRACKING" : "BUFFERING") + "</span><b>LB-301–306</b><small>6 × TEU · " + ph.name + "</small></div>" +
         '<div class="kvs">' +
         kv("Mission time", "T+" + mmss(veh.u * MISSION_S)) +
         kv("Altitude", veh.alt < 1 ? "0 km" : veh.alt.toFixed(veh.alt < 100 ? 1 : 0) + " km") +
@@ -838,6 +999,213 @@
     }
 
     /* =====================================================================
+       (d) SHIPPING TO CAPE CANAVERAL: Houston (sea), Miami (sea), Atlanta (road)
+       SATCOM carries tracking where there is no RF/cellular coverage.
+       ===================================================================== */
+    const ROUTES = [
+      {
+        id: "HOU", name: "Houston", mode: "ship", color: "#ffb347", ids: "LB-401–432", teus: 32, cols: 8, cruise: 19, unit: "kn", period: 130, mast: "BS-H",
+        pts: [[29.685, -94.985], [29.5, -94.9], [29.34, -94.74], [29.2, -94.5], [28.6, -92.8], [27.4, -89.8], [25.9, -86.0], [24.6, -83.5], [24.2, -82.0], [24.35, -81.0], [24.55, -80.3], [25.4, -79.9], [26.7, -79.85], [27.9, -79.95], [28.38, -80.35], [28.41, -80.58]],
+      },
+      {
+        id: "MIA", name: "Miami", mode: "ship", color: "#5fd08a", ids: "LB-451–474", teus: 24, cols: 6, cruise: 17, unit: "kn", period: 60, mast: "BS-M",
+        pts: [[25.775, -80.165], [25.77, -80.05], [26.7, -79.9], [27.9, -79.97], [28.38, -80.35], [28.41, -80.58]],
+      },
+      {
+        id: "ATL", name: "Atlanta", mode: "truck", color: "#e8f1f8", ids: "LB-501–503", teus: 3, cruise: 85, unit: "km/h", period: 95, mast: null,
+        pts: [[33.749, -84.388], [32.84, -83.632], [31.45, -83.51], [30.83, -83.28], [30.19, -82.64], [29.19, -82.14], [28.54, -81.38], [28.41, -80.62]],
+      },
+    ];
+    const SHIP_TEUS = ROUTES.reduce((a, r) => a + r.teus, 0);
+    const mastH = baseStation("shipping", 29.69, -94.97, "BS-H · Port Houston");
+    const mastM = baseStation("shipping", 25.78, -80.19, "BS-M · PortMiami");
+    const mastP = baseStation("shipping", 28.405, -80.625, "BS-P · Port Canaveral (gateway)");
+    const MASTS = { "BS-H": mastH, "BS-M": mastM, "BS-P": mastP };
+    const PLACES = [
+      ["Houston", 29.76, -95.37],
+      ["Miami", 25.76, -80.19],
+      ["Atlanta", 33.749, -84.388],
+      ["Port Canaveral", 28.41, -80.6],
+    ];
+    PLACES.forEach(([nm, la, lo]) =>
+      add("shipping", {
+        position: cart(la, lo, 0),
+        point: { pixelSize: 7, color: WHITE, outlineColor: DARK, outlineWidth: 2 },
+        label: { text: nm, font: MONO, fillColor: WHITE, outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new C.Cartesian2(10, 0), horizontalOrigin: C.HorizontalOrigin.LEFT, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 9e6) },
+      })
+    );
+
+    ROUTES.forEach((r) => {
+      r.c = r.pts.map(([la, lo]) => cart(la, lo, 0));
+      r.cum = [0];
+      for (let i = 1; i < r.c.length; i++) r.cum.push(r.cum[i - 1] + C.Cartesian3.distance(r.c[i - 1], r.c[i]));
+      r.total = r.cum[r.cum.length - 1];
+      r.km = r.total / 1000;
+      r.cruiseKmh = r.unit === "kn" ? r.cruise * 1.852 : r.cruise;
+      r.hours = r.km / r.cruiseKmh;
+      r.f = 0;
+      r.speed = 0;
+      r.b = [];
+      r.col = css(r.color);
+      r.link = { k: "rf", text: "RF" };
+      r.cycle = -1;
+      r.arrived = false;
+    });
+    function routeAt(r, f) {
+      const d = clamp(f, 0, 1) * r.total;
+      let i = 1;
+      while (i < r.cum.length - 1 && d > r.cum[i]) i++;
+      const k = (d - r.cum[i - 1]) / (r.cum[i] - r.cum[i - 1]);
+      const a = r.pts[i - 1];
+      const b = r.pts[i];
+      const la = a[0] + (b[0] - a[0]) * k;
+      const lo = a[1] + (b[1] - a[1]) * k;
+      const brg = (Math.atan2((b[1] - a[1]) * Math.cos((la * Math.PI) / 180), b[0] - a[0]) * 180) / Math.PI;
+      return { la, lo, brg };
+    }
+    function basisAt(r, f) {
+      const p = routeAt(r, f);
+      const pos = cart(p.la, p.lo, 0);
+      const en = enu(pos);
+      const br = (p.brg * Math.PI) / 180;
+      const fwd = C.Cartesian3.add(C.Cartesian3.multiplyByScalar(en.e, Math.sin(br), new C.Cartesian3()), C.Cartesian3.multiplyByScalar(en.n, Math.cos(br), new C.Cartesian3()), new C.Cartesian3());
+      const side = C.Cartesian3.subtract(C.Cartesian3.multiplyByScalar(en.e, Math.cos(br), new C.Cartesian3()), C.Cartesian3.multiplyByScalar(en.n, Math.sin(br), new C.Cartesian3()), new C.Cartesian3());
+      return { pos, fwd, side, up: en.u, brg: p.brg, q: hprQ(pos, p.brg - 90) };
+    }
+    const lay = (b, fwd, side, up) => madd(madd(madd(b.pos, b.fwd, fwd), b.side, side), b.up, up);
+
+    function routeLink(r) {
+      if (r.mode === "ship") {
+        if (r.f < 0.035) return { k: "rf", text: "RF · " + r.mast, mast: r.mast };
+        if (r.f > 0.965) return { k: "rf", text: "RF · BS-P", mast: "BS-P" };
+        return { k: "sat" };
+      }
+      if ((r.f > 0.33 && r.f < 0.44) || (r.f > 0.62 && r.f < 0.7)) return { k: "sat" };
+      if (r.f > 0.97) return { k: "rf", text: "RF · BS-P", mast: "BS-P" };
+      return { k: "lte", text: "Cellular LTE" };
+    }
+    const LINK_COL = { sat: VIOLET, rf: SKY, lte: SKY };
+
+    function tickShipping() {
+      ROUTES.forEach((r) => {
+        const cyc = r.period + 9;
+        const x = T % cyc;
+        const run = x < r.period;
+        r.f = run ? x / r.period : 1;
+        const sh = run ? Math.min(1, r.f / 0.03, (1 - r.f) / 0.03) : 0;
+        r.speed = r.cruise * Math.max(0, sh) * (1 + 0.04 * Math.sin(T * (r.mode === "ship" ? 1 : 0.7)));
+        const n = r.mode === "ship" ? 1 : 3;
+        for (let j = 0; j < n; j++) r.b[j] = basisAt(r, clamp(r.f - (j * 70) / r.total, 0, 1));
+        r.top = upBy(r.b[0].pos, r.mode === "ship" ? 24 : 6);
+        const lk = routeLink(r);
+        if (lk.k === "sat") {
+          r.sat.eval();
+          lk.text = r.sat.ok ? "SATCOM · SAT-" + (r.sat.a + 1) + " · " + r.sat.el.toFixed(0) + "° el" : "SATCOM · searching";
+        }
+        if (lk.k !== r.link.k && r.cycle >= 0) {
+          if (lk.k === "sat") log("shipping", r.name + ": out of RF/cellular range · switched to SATCOM");
+          else if (r.link.k === "sat") log("shipping", r.name + ": back in coverage · " + lk.text);
+        }
+        r.link = lk;
+        const c = Math.floor(T / cyc);
+        if (c !== r.cycle) {
+          r.cycle = c;
+          r.arrived = false;
+          log("shipping", r.name + " → Cape: departed · " + r.teus + " TEU" + (r.teus > 1 ? "s" : "") + " reporting");
+        }
+        if (!run && !r.arrived) {
+          r.arrived = true;
+          log("shipping", r.name + " arrived at Port Canaveral · " + r.teus + "/" + r.teus + " TEUs nominal");
+        }
+      });
+    }
+
+    ROUTES.forEach((r, ri) => {
+      // route line + travelled portion
+      add("shipping", { polyline: { positions: C.Cartesian3.fromDegreesArrayHeights(r.pts.flatMap(([la, lo]) => [lo, la, 40])), width: 2, arcType: C.ArcType.GEODESIC, material: new C.PolylineDashMaterialProperty({ color: r.col.withAlpha(0.8), dashLength: 14 }) } });
+      add("shipping", {
+        polyline: {
+          positions: CP(() => {
+            const pts = [];
+            for (let i = 0; i < r.c.length; i++) {
+              if (r.cum[i] / r.total >= r.f) break;
+              pts.push(upBy(r.c[i], 40));
+            }
+            pts.push(upBy(r.b[0].pos, 40));
+            return pts.length >= 2 ? pts : [r.b[0].pos, upBy(r.b[0].pos, 1)];
+          }),
+          width: 4,
+          material: new C.PolylineGlowMaterialProperty({ glowPower: 0.25, color: r.col }),
+        },
+      });
+      r.sat = satLink("shipping", () => r.top, [() => mastP], () => active === "shipping" && r.link.k === "sat", (a, b) => log("shipping", r.name + ": SATCOM handover SAT-" + (a + 1) + " → SAT-" + (b + 1)));
+      // RF link to the nearest port mast while in port range
+      uplink("shipping", () => r.top, () => MASTS[r.link.mast || "BS-P"], () => active === "shipping" && r.link.k === "rf" && !!r.link.mast);
+      // fleet indicator + label
+      indicator("shipping", () => r.top, { big: true, ring: false, halo: true, size: () => 12, color: () => LINK_COL[r.link.k] });
+      add("shipping", {
+        position: CP(() => upBy(r.top, 30)),
+        label: {
+          text: CP(() => "● TRACKED · " + r.name + " → Cape\n" + r.teus + " TEU · " + (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "LTE" : "RF")),
+          font: MONO,
+          fillColor: WHITE,
+          showBackground: true,
+          backgroundColor: DARK.withAlpha(0.82),
+          backgroundPadding: new C.Cartesian2(8, 5),
+          pixelOffset: new C.Cartesian2(0, -16),
+          verticalOrigin: C.VerticalOrigin.BOTTOM,
+          distanceDisplayCondition: new C.DistanceDisplayCondition(0, 8e6),
+          disableDepthTestDistance: INF,
+        },
+      });
+      if (r.mode === "ship") {
+        add("shipping", { position: CP(() => lay(r.b[0], 0, 0, 5)), orientation: CP(() => r.b[0].q), box: { dimensions: new C.Cartesian3(150, 24, 10), material: css("#2b3d4f"), outline: true, outlineColor: EDGE } });
+        add("shipping", { position: CP(() => lay(r.b[0], -58, 0, 18)), orientation: CP(() => r.b[0].q), box: { dimensions: new C.Cartesian3(16, 22, 16), material: css("#d9dee3"), outline: true, outlineColor: EDGE } });
+        let k = 0;
+        for (let c = 0; c < r.cols; c++) {
+          for (let row = 0; row < 2; row++) {
+            for (let t = 0; t < 2; t++) {
+              const fw = -34 + c * 8;
+              const sd = row ? 3.2 : -3.2;
+              const up = 10 + TEU.z / 2 + t * TEU.z;
+              const idx = k++;
+              teuBox("shipping", { pos: CP(() => lay(r.b[0], fw, sd, up)), orient: CP(() => r.b[0].q), color: PALETTE[(idx * 3 + ri * 2) % PALETTE.length], tag: { scn: "shipping" } });
+              indicator("shipping", () => lay(r.b[0], fw, sd, up + TEU.z / 2 + 0.6), { ring: false, size: () => 6, dist: 2500, color: () => LINK_COL[r.link.k] });
+            }
+          }
+        }
+      } else {
+        for (let j = 0; j < 3; j++) {
+          add("shipping", { position: CP(() => lay(r.b[j], 0, 0, 0.95)), orientation: CP(() => r.b[j].q), box: { dimensions: new C.Cartesian3(7.6, 2.7, 0.7), material: css("#26384a"), outline: true, outlineColor: EDGE } });
+          add("shipping", { position: CP(() => lay(r.b[j], 5.9, 0, 2.0)), orientation: CP(() => r.b[j].q), box: { dimensions: new C.Cartesian3(2.8, 2.5, 3.0), material: css("#c9ced4"), outline: true, outlineColor: EDGE } });
+          teuBox("shipping", { pos: CP(() => lay(r.b[j], -0.2, 0, 1.3 + TEU.z / 2)), orient: CP(() => r.b[j].q), color: PALETTE[(j * 2 + 3) % PALETTE.length], tag: { scn: "shipping" } });
+          indicator("shipping", () => lay(r.b[j], -0.2, 0, 1.3 + TEU.z + 0.6), { ring: false, size: () => 7, dist: 2500, color: () => LINK_COL[r.link.k] });
+        }
+      }
+    });
+    tickShipping();
+
+    const linkBadge = (r) => (r.link.k === "sat" ? "sat" : "ok");
+    const linkLabel = (r) => (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "LTE" : "RF");
+    const hm = (h) => Math.floor(h) + "h " + String(Math.round((h % 1) * 60)).padStart(2, "0") + "m";
+    function feedShipping() {
+      let html =
+        '<div class="lb-summary"><span><b>' + SHIP_TEUS + "/" + SHIP_TEUS + "</b> TEUs reporting</span><span><b>" + ROUTES.length + "</b> routes</span></div>";
+      ROUTES.forEach((r, i) => {
+        const on = cam.follow === i;
+        html +=
+          '<div class="rt' + (on ? " is-on" : "") + '">' +
+          '<div class="rt-head"><i class="rt-sw" style="background:' + r.color + '"></i><b>' + r.name + " → Cape</b><span class=\"lb-badge " + linkBadge(r) + '">' + linkLabel(r) + "</span></div>" +
+          '<div class="rt-sub">' + (r.mode === "ship" ? "Container ship" : "Truck convoy") + " · " + r.teus + " TEU · " + r.ids + "</div>" +
+          '<div class="rt-bar"><span style="width:' + (r.f * 100).toFixed(0) + "%;background:" + r.color + '"></span></div>' +
+          '<div class="rt-kv"><span>' + r.speed.toFixed(0) + " " + r.unit + "</span><span>ETA " + hm((1 - r.f) * r.hours) + "</span><span>" + Math.round(r.km) + " km</span></div>" +
+          '<div class="rt-link">' + (r.link.text || linkLabel(r)) + "</div>" +
+          '<button class="rt-follow" type="button" data-follow="' + i + '">' + (on ? "Release camera" : "Follow") + "</button></div>";
+      });
+      return html + logHTML("shipping");
+    }
+
+    /* =====================================================================
        UI wiring
        ===================================================================== */
     const overlay = $("#lb-overlay");
@@ -846,6 +1214,7 @@
     const META = {
       road: { title: "LuminaBox LB-207", sub: "Tracking 1 TEU · road transit", chip: "Time-lapse 10× · simulated telemetry", follow: "Follow asset (scroll to zoom)" },
       warehouse: { title: "LuminaBox inventory", sub: "Tracking 36 TEUs · staging warehouse", chip: "Simulated inventory feed · click a container", follow: null },
+      shipping: { title: "LuminaBox fleet", sub: "Tracking " + SHIP_TEUS + " TEUs \u00B7 3 routes to Cape Canaveral", chip: "Time-lapse \u00B7 simulated \u00B7 SATCOM at sea", follow: null },
       launch: { title: "LuminaBox LB-301–306", sub: "Tracking 6 TEUs · Cape → Japan", chip: "Notional trajectory · simulated", follow: "Director camera (scroll to zoom)" },
     };
     const ctlForecast = $("#ctl-forecast");
@@ -868,9 +1237,13 @@
       if (prev === "launch") {
         cam.ready = false;
         releaseCamera();
-        viewer.scene.screenSpaceCameraController.maximumZoomDistance = 160000;
         setPlaying(false);
       }
+      if (prev === "shipping" && cam.follow != null) {
+        cam.follow = null;
+        releaseCamera();
+      }
+      if (prev === "launch" || prev === "shipping") viewer.scene.screenSpaceCameraController.maximumZoomDistance = 160000;
       if (prev === "road" && cam.roadFollow) {
         cam.roadFollow = false;
         releaseCamera();
@@ -892,12 +1265,12 @@
       ctlForecast.hidden = id !== "road";
       ctlMission.hidden = id !== "launch";
       phaseRow.hidden = id !== "launch";
-      wxReadout.hidden = id === "launch";
+      wxReadout.hidden = id === "launch" || id === "shipping";
       // weather overlays: hidden during the global launch view, restored otherwise
-      if (id === "launch") {
+      if (id === "launch" || id === "shipping") {
         layers.wind.forEach((e) => (e.show = false));
         layers.precip.forEach((e) => (e.show = false));
-        layers.rocket.forEach((e) => (e.show = false));
+        layers.rocket.forEach((e) => (e.show = id !== "launch"));
         viewer.scene.screenSpaceCameraController.maximumZoomDistance = Infinity;
       } else {
         layers.rocket.forEach((e) => (e.show = true));
@@ -919,6 +1292,8 @@
           duration: 1.8,
           offset: new C.HeadingPitchRange(C.Math.toRadians(25), C.Math.toRadians(-42), 190),
         });
+      } else if (id === "shipping") {
+        flyShipOverview(2.4);
       } else {
         viewer.camera.flyToBoundingSphere(new C.BoundingSphere(veh.pos, 1), {
           duration: 1.6,
@@ -933,9 +1308,16 @@
         });
       }
     }
+    function flyShipOverview(dur) {
+      viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(28.4, -87.9, 0), 1), {
+        duration: dur,
+        offset: new C.HeadingPitchRange(0, C.Math.toRadians(-72), 2.9e6),
+      });
+    }
     function tickActive() {
       if (active === "road") tickRoad();
       else if (active === "warehouse") tickWarehouse();
+      else if (active === "shipping") tickShipping();
       else tickLaunch();
     }
 
@@ -973,6 +1355,19 @@
       mission.u = Math.min(0.999, p.u0 + 0.004);
       $("#mission-t").value = Math.round(mission.u * 1000);
     });
+    $("#lb-feed-body").addEventListener("pointerdown", (ev) => {
+      const b = ev.target.closest("[data-follow]");
+      if (!b || active !== "shipping") return;
+      const i = parseInt(b.dataset.follow, 10);
+      if (cam.follow === i) {
+        cam.follow = null;
+        releaseCamera();
+        flyShipOverview(1.8);
+      } else {
+        cam.follow = i;
+        cam.zoom = 1;
+      }
+    });
     const assetCb = document.querySelector('[data-layer="assets"]');
     assetCb.addEventListener("change", () => {
       assetsOn = assetCb.checked;
@@ -991,6 +1386,12 @@
     viewer.scene.preRender.addEventListener(() => {
       T = performance.now() / 1000;
       tickActive();
+      if (active === "shipping" && cam.follow != null) {
+        const r = ROUTES[cam.follow];
+        const b = r.b[0];
+        viewer.camera.lookAt(b.pos, new C.HeadingPitchRange(C.Math.toRadians(b.brg + 160), C.Math.toRadians(-26), (r.mode === "ship" ? 380 : 75) * cam.zoom));
+      }
+      if (active === "launch" || active === "shipping") updateSats();
       if (active === "road" && cam.roadFollow) {
         viewer.camera.lookAt(
           road.pTeu,
@@ -1001,7 +1402,7 @@
     viewer.canvas.addEventListener(
       "wheel",
       (ev) => {
-        if ((active === "road" && cam.roadFollow) || (active === "launch" && cam.director && cam.ready)) {
+        if ((active === "road" && cam.roadFollow) || (active === "launch" && cam.director && cam.ready) || (active === "shipping" && cam.follow != null)) {
           cam.zoom = clamp(cam.zoom * (ev.deltaY > 0 ? 1.12 : 0.89), 0.25, 4);
           ev.preventDefault();
           ev.stopImmediatePropagation();
@@ -1013,13 +1414,14 @@
       applyVisibility();
     }, 400);
     setInterval(() => {
-      $("#lb-feed-body").innerHTML = active === "road" ? feedRoad() : active === "warehouse" ? feedWarehouse() : feedLaunch();
+      $("#lb-feed-body").innerHTML = active === "road" ? feedRoad() : active === "warehouse" ? feedWarehouse() : active === "shipping" ? feedShipping() : feedLaunch();
     }, 250);
 
     overlay.hidden = false;
     setScenario("road", { force: true, noFly: true });
     log("road", "LB-207 online · link established with BS-1");
     log("warehouse", "Gateway BS-W online · " + whBox.length + " LuminaBoxes joined");
+    log("shipping", "Fleet online \u00B7 " + SHIP_TEUS + " LuminaBoxes joined \u00B7 SATCOM fallback armed");
     log("launch", "LB-301–306 armed · link BS-1");
     void teuInPos;
     void launchOn;

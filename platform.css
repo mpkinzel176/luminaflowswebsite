@@ -1068,3 +1068,99 @@
   color: var(--steel);
   font-family: var(--mono);
 }
+
+/* SATCOM + shipping */
+.lg-sat {
+  height: 0;
+  border-top: 2px dashed #b58cff;
+}
+
+.lb-badge.sat {
+  color: #b58cff;
+  border: 1px solid rgba(181, 140, 255, 0.6);
+}
+
+.rt {
+  margin-bottom: 0.7rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+
+.rt.is-on {
+  border-color: var(--yellow);
+}
+
+.rt-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  font-size: 0.86rem;
+}
+
+.rt-head .lb-badge {
+  margin-left: auto;
+}
+
+.rt-sw {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.rt-sub {
+  margin: 0.2rem 0 0.45rem;
+  color: var(--steel);
+  font-size: 0.7rem;
+}
+
+.rt-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(140, 185, 220, 0.18);
+  overflow: hidden;
+}
+
+.rt-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.rt-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  color: #c6d8e6;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.rt-link {
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.rt-follow {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: #fff;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rt.is-on .rt-follow {
+  color: var(--yellow);
+  border-color: var(--yellow);
+}

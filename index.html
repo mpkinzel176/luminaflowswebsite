@@ -499,8 +499,9 @@
               A 3D geospatial twin of the Kennedy Space Center and Cape Canaveral area, connected to open-source weather
               prediction data. Forecast winds and precipitation are projected onto facility massing, roads, and
               LuminaBox-tracked TEU containers, so you can see which assets and work areas are affected, and when.
-              Switch between road transit, warehouse inventory, and a notional rocket-cargo delivery to Japan. Drag to
-              orbit, scroll to zoom.
+              Switch between road transit, warehouse inventory, shipping routes into Cape Canaveral, and a notional
+              rocket-cargo delivery to Japan, with satellite communications carrying tracking wherever RF and cellular
+              coverage ends. Drag to orbit, scroll to zoom.
             </p>
           </div>
 
@@ -544,6 +545,7 @@
                 <span class="tabs-label">LuminaBox tracking</span>
                 <button class="stab is-active" role="tab" aria-selected="true" data-scn="road" type="button">Road transit</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="warehouse" type="button">Warehouse</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="shipping" type="button">Shipping to Cape</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
               </div>
               <div class="cesium-wrap">
@@ -556,7 +558,8 @@
                     <div class="lb-sub" id="lb-sub">Tracking 1 TEU</div>
                     <ul class="lb-legend" aria-label="Map legend">
                       <li><i class="lg lg-asset"></i>TEU tracked by a LuminaBox</li>
-                      <li><i class="lg lg-link"></i>Uplink to base station</li>
+                      <li><i class="lg lg-link"></i>RF / cellular uplink</li>
+                      <li><i class="lg lg-sat"></i>SATCOM link via satellite</li>
                       <li><i class="lg lg-bs"></i>Base station</li>
                     </ul>
                     <button class="lb-follow" id="lb-follow" type="button" aria-pressed="false">Follow asset</button>
@@ -611,8 +614,8 @@
               <p class="fine" id="src-note">
                 Weather: Open-Meteo open forecast API (open national models). Radar: NOAA MRMS. Imagery: OpenStreetMap
                 contributors. Facility footprints and heights are approximate massing for concept demonstration, not
-                survey or CAD data. LuminaBox telemetry, container contents, the warehouse, and the Japan delivery
-                trajectory are simulated for illustration. Status thresholds are illustrative. Not for operational use.
+                survey or CAD data. LuminaBox telemetry, container contents, the warehouse, shipping routes, the
+                satellite constellation, and the Japan delivery trajectory are simulated or approximate, for illustration. Status thresholds are illustrative. Not for operational use.
               </p>
             </div>
           </div>
