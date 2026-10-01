@@ -8,7 +8,7 @@
       name="description"
       content="Lumina Flows is a small U.S. engineering company. We combine high-resolution weather, GPU fluid simulation and low-cost sensors into digital twins for launch sites, shipping and defense programs."
     />
-    <meta property="og:title" content="Lumina Flows | Know what the weather will do to your site" />
+    <meta property="og:title" content="Lumina Flows | See how the weather will affect your site" />
     <meta
       property="og:description"
       content="Digital twins, GPU fluid simulation and LuminaBox sensors for launch sites, shipping and defense programs."
@@ -50,7 +50,7 @@
       <section class="hero" id="home" aria-labelledby="hero-title">
         <div class="hero-inner">
           <div class="hero-copy">
-            <h1 id="hero-title">Know what the weather will do to your site before it does it.</h1>
+            <h1 id="hero-title">See how the weather will affect your site before it strikes.</h1>
             <p class="hero-lede">
               We're a small, U.S.-based engineering company. We take high-resolution weather, fluid simulation and
               low-cost sensors and turn them into digital twins, so launch sites, shipping teams and defense programs
@@ -137,19 +137,38 @@
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div>
-        <a href="index.html" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
-      </div>
-      <nav class="foot-nav" aria-label="Footer">
+    <footer class="site-footer rich">
+      <div class="foot-grid">
+        <div class="foot-brand">
+          <a href="index.html" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
+          <p>Engineering complex systems in motion.</p>
+          <p class="foot-small">Lumina Flows is a brand of Advanced CFD Solutions, LLC, a U.S.-based engineering company.</p>
+        </div>
+        <nav class="foot-col" aria-label="Explore">
+          <h4>Explore</h4>
           <a href="digital-thread.html">Digital thread</a>
           <a href="cfd.html">Real-time CFD</a>
           <a href="luminabox.html">LuminaBox</a>
           <a href="counter-uas.html">Counter-UAS</a>
           <a href="twin.html">Digital twin</a>
-          <a href="consulting.html">Consulting</a>
-      </nav>
-      <p>&copy; <span id="year"></span> Lumina Flows. All rights reserved.</p>
+          <a href="consulting.html">Consulting and about</a>
+        </nav>
+        <div class="foot-col">
+          <h4>Contact</h4>
+          <!-- TODO: replace with the company's verified general email address (the site currently has a placeholder). -->
+          <a href="mailto:contact@company.com">contact@company.com</a>
+          <a href="https://www.luminaflows.com" rel="noopener">www.luminaflows.com</a>
+          <a href="https://www.sbir.gov/portfolio/1482103" target="_blank" rel="noopener noreferrer">SBIR/STTR listing</a>
+        </div>
+        <div class="foot-col">
+          <h4>Research supported by</h4>
+          <p class="foot-small">Office of Naval Research, U.S. Navy and Air Force Research Laboratory. Agency and university names describe past work and do not imply endorsement.</p>
+        </div>
+      </div>
+      <div class="foot-base">
+        <p>&copy; <span id="year"></span> Advanced CFD Solutions, LLC. All rights reserved.</p>
+        <p>Maps &copy; OpenStreetMap contributors. Weather data from Open-Meteo.</p>
+      </div>
     </footer>
 
     <script src="script.js"></script>

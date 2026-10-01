@@ -85,31 +85,14 @@
     const lk = (t) => () => linkFilter === "all" || linkFilter === t;
     const CELLC = GRN;
     const DGRN = css("#235c3a");
+    // Former "base stations" are now cell towers (the LuminaBox reports over NB-IoT or satellite to a client-owned server).
+    function towerName(n) {
+      let x = n.replace(/^BS-\w+ . /, "");
+      x = x.replace(/^Base station ?\(?([^)]*)\)?$/, "$1");
+      return "Cell tower \u00B7 " + (x || "site");
+    }
     function baseStation(scn, lat, lon, name, cond, ringM) {
-      const top = cart(lat, lon, 32);
-      if (ringM) add(scn, { position: cart(lat, lon, 0), ellipse: { semiMajorAxis: ringM, semiMinorAxis: ringM, height: 0.3, material: SKY.withAlpha(0.08) } }, cond);
-      add(scn, { position: cart(lat, lon, 16), cylinder: { length: 32, topRadius: 0.5, bottomRadius: 1.3, material: css("#9fb6c8") } }, cond);
-      add(
-        scn,
-        {
-          position: top,
-          point: { pixelSize: 10, color: CP(() => (Math.floor(T * 1.5) % 2 ? RED : DRED)), outlineColor: WHITE, outlineWidth: 1, disableDepthTestDistance: INF },
-          label: {
-            text: name,
-            font: MONO,
-            fillColor: WHITE,
-            outlineColor: DARK,
-            outlineWidth: 4,
-            style: C.LabelStyle.FILL_AND_OUTLINE,
-            pixelOffset: new C.Cartesian2(0, -14),
-            verticalOrigin: C.VerticalOrigin.BOTTOM,
-            distanceDisplayCondition: new C.DistanceDisplayCondition(0, 30000),
-            disableDepthTestDistance: INF,
-          },
-        },
-        cond
-      );
-      return top;
+      return cellTower(scn, lat, lon, towerName(name), ringM || 0, cond);
     }
 
     function cellTower(scn, lat, lon, name, rangeM, cond) {
@@ -139,11 +122,11 @@
       return top;
     }
 
-    // Typed link line with data packets: type is "rf" (base station), "cell" (cellular) or "sat".
+    // Typed link line with data packets: type is "cell" (NB-IoT cellular) or "sat" (satellite).
     function uplink(scn, aFn, bFn, cond, o) {
       o = o || {};
-      const type = o.type || "rf";
-      const col = o.color || SKY;
+      const type = !o.type || o.type === "rf" ? "cell" : o.type;
+      const col = o.color || (type === "sat" ? VIOLET : CELLC);
       const c2 = () => (!cond || cond()) && lk(type)();
       add(scn, { polyline: { positions: CP(() => [aFn(), bFn()]), width: 2, material: new C.PolylineDashMaterialProperty({ color: col, dashLength: 14 }) } }, c2);
       [0, 0.5].forEach((k) =>
@@ -558,8 +541,8 @@
       if (t.state === "drive" || t.state === "return" || t.state === "wait" || t.state === "home") return t.pTop;
       return crawler.active ? upBy(crawler.bay, 22) : upBy(cart(KS.vab.center[0], KS.vab.center[1], 0), 30);
     };
-    const LNAME = { rf: "RF base station", cell: "cellular", sat: "SATCOM" };
-    road.link = { type: "rf", tgt: bs1f, text: "RF \u00B7 BS-1" };
+    const LNAME = { rf: "cellular", cell: "cellular", sat: "SATCOM" };
+    road.link = { type: "cell", tgt: bs1f, text: "NB-IoT \u00B7 cell tower" };
     let roadSat = null; // created after the satellite block
     function roadLinkUpdate() {
       const p = roadAsset();
@@ -567,9 +550,9 @@
       const dA = C.Cartesian3.distance(p, bsAr);
       const dC = C.Cartesian3.distance(p, cellRoad);
       let L;
-      if (d1 < 600) L = { type: "rf", tgt: bs1f, text: "RF \u00B7 BS-1 \u00B7 " + (d1 / 1000).toFixed(1) + " km" };
-      else if (dA < 600) L = { type: "rf", tgt: () => bsAr, text: "RF \u00B7 BS-A \u00B7 " + (dA / 1000).toFixed(1) + " km" };
-      else if (dC < 3500) L = { type: "cell", tgt: () => cellRoad, text: "Cellular LTE \u00B7 tower " + (dC / 1000).toFixed(1) + " km" };
+      if (d1 < 600) L = { type: "cell", tgt: bs1f, text: "NB-IoT \u00B7 LCC tower \u00B7 " + (d1 / 1000).toFixed(1) + " km" };
+      else if (dA < 600) L = { type: "cell", tgt: () => bsAr, text: "NB-IoT \u00B7 pad tower \u00B7 " + (dA / 1000).toFixed(1) + " km" };
+      else if (dC < 3500) L = { type: "cell", tgt: () => cellRoad, text: "NB-IoT \u00B7 KSC tower " + (dC / 1000).toFixed(1) + " km" };
       else L = { type: "sat", tgt: null, text: "SATCOM" };
       if (L.type !== road.link.type) log("road", trucks[road.sel].id + ": " + LNAME[road.link.type] + " \u2192 " + LNAME[L.type]);
       if (L.type === "sat" && roadSat) {
@@ -578,8 +561,7 @@
       }
       road.link = L;
     }
-    uplink("road", roadAsset, () => (typeof road.link.tgt === "function" ? road.link.tgt() : bs1), () => active === "road" && road.link.type === "rf" && typeof road.link.tgt === "function", { type: "rf" });
-    uplink("road", roadAsset, () => cellRoad, () => active === "road" && road.link.type === "cell", { type: "cell", color: CELLC });
+    uplink("road", roadAsset, () => (typeof road.link.tgt === "function" ? road.link.tgt() : cellRoad), () => active === "road" && road.link.type === "cell" && typeof road.link.tgt === "function", { type: "cell" });
 
     // damaged-road markers (detected from TEU shock readings)
     DMG.forEach((p) => {
@@ -952,18 +934,16 @@
     const bsWp = obbLL(WH.L / 2 + 22, WH.W / 2 + 8);
     const bsW = baseStation("warehouse", bsWp[0], bsWp[1], "BS-W · Base station");
     const whLinkType = () => {
-      const c = T % 36;
-      return c < 22 ? "rf" : c < 28 ? "cell" : c < 32 ? "sat" : "rf";
+      const c = T % 34;
+      return c < 24 ? "cell" : c < 31 ? "sat" : "cell";
     };
-    const cellWh = cellTower("warehouse", CELL_LL[0], CELL_LL[1], "Cell tower \u00B7 KSC comms tower", 3500);
     const whRoof = () => cart(WH.lat, WH.lon, 16);
-    uplink("warehouse", whRoof, () => bsW, () => active === "warehouse" && whLinkType() === "rf", { type: "rf" });
-    uplink("warehouse", whRoof, () => cellWh, () => active === "warehouse" && whLinkType() === "cell", { type: "cell", color: CELLC });
+    uplink("warehouse", whRoof, () => bsW, () => active === "warehouse" && whLinkType() === "cell", { type: "cell" });
     let whSat = null; // created after the satellite block
-    let whLastLink = "rf";
+    let whLastLink = "cell";
     const whLinkText = () => {
       const t = whLinkType();
-      return t === "rf" ? "RF \u00B7 BS-W gateway" : t === "cell" ? "Cellular LTE \u00B7 failover test" : whSat && whSat.ok ? "SATCOM \u00B7 SAT-" + (whSat.a + 1) + " \u00B7 failover test" : "SATCOM \u00B7 failover test";
+      return t === "cell" ? "NB-IoT \u00B7 warehouse tower" : whSat && whSat.ok ? "SATCOM \u00B7 SAT-" + (whSat.a + 1) + " \u00B7 failover test" : "SATCOM \u00B7 failover test";
     };
 
     const CONTENTS = ["Avionics racks", "Payload adapters", "Ground support eq.", "Optical instruments", "Spares pallets", "Fairing hardware", "Test fixtures", "Cabling & harness"];
@@ -1316,7 +1296,7 @@
         temp: 21 + 6 * bump(0.77, 0.04) + 1.2 * ss((u - 0.1) / 0.12) + tOff,
       };
     }
-    const veh = { u: 0, s: 0, pos: posOfS(0), x: null, y: null, z: null, q: null, qIn: null, speed: 0, alt: 0, g: 1, vib: 0.03, temp: 21, link: "BS-1", linkOk: true };
+    const veh = { u: 0, s: 0, pos: posOfS(0), x: null, y: null, z: null, q: null, qIn: null, speed: 0, alt: 0, g: 1, vib: 0.03, temp: 21, link: "NB-IoT", linkOk: true };
     const mission = { u: 0, playing: false, last: T };
     const slots = [];
     for (let k = 0; k < 6; k++) {
@@ -1365,7 +1345,7 @@
       veh.g = tl0.g + rnd(-0.04, 0.04);
       veh.vib = tl0.vib + rnd(0, 0.05);
       veh.temp = tl0.temp;
-      veh.link = "BS-1 (RF)";
+      veh.link = "NB-IoT (pad tower)";
       veh.linkOk = true;
       // TEU transforms
       const wOff = ss((u - 0.925) / 0.05);
@@ -1462,11 +1442,11 @@
         else if (veh.u >= 0.79) log("launch", "Signal re-acquired \u00B7 buffer flushed via SATCOM");
       }
       veh.linkOk = !bl;
-      if (veh.u < 0.1) veh.link = "BS-1 (RF)";
+      if (veh.u < 0.1) veh.link = "NB-IoT (pad tower)";
       else if (bl) veh.link = "BLACKOUT \u00B7 buffering";
       else {
         const s = launchSat.ok ? "SATCOM \u00B7 SAT-" + (launchSat.a + 1) : "SATCOM";
-        veh.link = veh.u >= 0.88 ? s + " + BS-J RF + cell" : veh.u >= 0.86 ? s + " + BS-J RF" : s;
+        veh.link = veh.u >= 0.86 ? s + " + NB-IoT at Japan site" : s;
       }
     }
     // Japan landing zone
@@ -1653,7 +1633,7 @@
       r.speed = 0;
       r.b = [];
       r.col = css(r.color);
-      r.link = { k: "rf", text: "RF" };
+      r.link = { k: "lte", text: "NB-IoT" };
       r.cycle = -1;
       r.arrived = false;
     });
@@ -1687,11 +1667,11 @@
     });
     function routeLink(r) {
       if (r.mode === "ship") {
-        if (r.f < 0.035) return { k: "rf", text: "RF · " + r.mast, mast: r.mast };
-        if (r.f > 0.965) return { k: "rf", text: "RF · BS-P", mast: "BS-P" };
+        if (r.f < 0.035) return { k: "lte", text: "NB-IoT \u00B7 port tower", mast: r.mast };
+        if (r.f > 0.965) return { k: "lte", text: "NB-IoT \u00B7 port tower", mast: "BS-P" };
         return { k: "sat" };
       }
-      if (r.f > 0.97) return { k: "rf", text: "RF \u00B7 BS-P", mast: "BS-P" };
+      if (r.f > 0.97) return { k: "lte", text: "NB-IoT \u00B7 port tower", mast: "BS-P" };
       let bd = 1e12;
       let bi = 0;
       TW.forEach((p, i) => {
@@ -1701,7 +1681,7 @@
           bi = i;
         }
       });
-      if (bd < 55000) return { k: "lte", text: "Cellular LTE \u00B7 tower " + Math.round(bd / 1000) + " km", tw: bi };
+      if (bd < 55000) return { k: "lte", text: "NB-IoT \u00B7 tower " + Math.round(bd / 1000) + " km", tw: bi };
       return { k: "sat" };
     }
     const LINK_COL = { sat: VIOLET, rf: SKY, lte: CELLC };
@@ -1761,13 +1741,13 @@
       r.sat = satLink("shipping", () => r.top, [() => mastP], () => active === "shipping" && r.link.k === "sat", (a, b) => log("shipping", r.name + ": SATCOM handover SAT-" + (a + 1) + " → SAT-" + (b + 1)));
       if (r.mode === "truck") uplink("shipping", () => r.top, () => upBy(TW[r.link.tw || 0], 30), () => active === "shipping" && r.link.k === "lte", { type: "cell", color: CELLC });
       // RF link to the nearest port mast while in port range
-      uplink("shipping", () => r.top, () => MASTS[r.link.mast || "BS-P"], () => active === "shipping" && r.link.k === "rf" && !!r.link.mast);
+      uplink("shipping", () => r.top, () => MASTS[r.link.mast || "BS-P"], () => active === "shipping" && r.link.k === "lte" && !!r.link.mast && r.mode === "ship");
       // fleet indicator + label
       indicator("shipping", () => r.top, { big: true, ring: false, halo: true, size: () => 12, color: () => LINK_COL[r.link.k] });
       add("shipping", {
         position: CP(() => upBy(r.top, 30)),
         label: {
-          text: CP(() => "● TRACKED · " + r.name + " → Cape\n" + r.teus + " TEU · " + (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "LTE" : "RF")),
+          text: CP(() => "● TRACKED · " + r.name + " → Cape\n" + r.teus + " TEU · " + (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "NB-IoT" : "NB-IoT")),
           font: MONO,
           fillColor: WHITE,
           showBackground: true,
@@ -1815,7 +1795,7 @@
     tickShipping();
 
     const linkBadge = (r) => (r.link.k === "sat" ? "sat" : r.link.k === "lte" ? "cell" : "ok");
-    const linkLabel = (r) => (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "LTE" : "RF");
+    const linkLabel = (r) => (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "NB-IoT" : "NB-IoT");
     const hm = (h) => Math.floor(h) + "h " + String(Math.round((h % 1) * 60)).padStart(2, "0") + "m";
     function feedShipping() {
       let html =
@@ -1856,33 +1836,39 @@
        Everything here is simulated. Lanes, gate spacing and interference zones are notional.
        ===================================================================== */
     const KN = 0.5144;
-    const HZ_OUT = [[26.4, 55.2], [26.38, 55.6], [26.44, 55.98], [26.5, 56.35], [26.46, 56.74], [26.2, 57.04], [25.72, 57.42], [25.2, 58.05]];
-    const HZ_IN = HZ_OUT.map(([la, lo]) => [la + 0.07, lo]).reverse();
+    // Lanes routed through open water on the real OpenStreetMap coastline (clearance >= 7 km, none cross land)
+    const HZ_OUT = [[26.3, 54.75], [26.3, 54.94], [26.41, 55.06], [26.41, 56.11], [26.54, 56.31], [26.55, 56.62], [26.29, 56.88], [26.12, 56.99], [25.96, 57.0], [25.85, 57.09], [25.73, 57.11], [25.38, 57.46], [25.05, 58.2]];
+    const HZ_IN = [[25.13, 58.2], [25.43, 57.51], [25.77, 57.17], [25.87, 57.16], [25.98, 57.07], [26.14, 57.06], [26.28, 56.95], [26.31, 56.95], [26.61, 56.65], [26.61, 56.3], [26.58, 56.22], [26.48, 56.1], [26.47, 55.02], [26.37, 54.91], [26.38, 54.75]];
     const HZ_LANES = [
-      { name: "Outbound", P: mkPath(HZ_OUT), gateLL: [26.4, 55.6], col: css("#ffb347") },
-      { name: "Inbound", P: mkPath(HZ_IN), gateLL: [26.28, 57.04], col: css("#8fd3f4") },
+      { name: "Outbound", P: mkPath(HZ_OUT), gateLL: [26.41, 55.62], col: css("#ffb347") },
+      { name: "Inbound", P: mkPath(HZ_IN), gateLL: [26.14, 57.06], col: css("#8fd3f4") },
     ];
     HZ_LANES.forEach((L) => (L.gateS = projectPath(L.P, L.gateLL)));
-    const HZ_STRAIT = [[26.2, 55.6], [26.2, 57.1]]; // slow zone between these longitudes
     const HZ_ZONES = [
-      { la: 26.4, lo: 56.1, R: 55000, name: "Zone A" },
-      { la: 25.55, lo: 57.3, R: 70000, name: "Zone B" },
+      { la: 26.5, lo: 56.3, R: 48000, name: "Zone A" },
+      { la: 25.6, lo: 57.3, R: 70000, name: "Zone B" },
     ];
     const HZ_LEVEL = { off: 0, mod: 0.55, heavy: 1 };
-    const HZ_HEADWAY = { off: 9, mod: 14, heavy: 24 }; // minutes between ships entering the strait
-    const HZ_DEMAND = { normal: 16, surge: 9 }; // minutes between arrivals per lane
+    const HZ_HEADWAY = { off: 9, mod: 12, heavy: 14 }; // minutes between ships entering the strait
+    const HZ_DEMAND = { normal: 18, surge: 10 }; // minutes between arrivals per lane
     const HZ_CRUISE = 14 * KN;
     const HZ_SLOW = 10 * KN;
-    const HZ_TLX = 360;
+    const HZ_TLX = 540;
     const hz = { jam: "mod", dem: "normal", view: "fused", W: 0, last: T, sel: null, exits: [], logIdx: 0, follow: false };
-    const hzSlowLon = [56.0, 56.9];
+    const hzSlowLon = [55.6, 57.0];
+    const hzNarrowLon = [56.1, 56.75];
+    const HZ_REGIONS = [
+      { name: "Western approaches", lon: [54.7, 55.6] },
+      { name: "Narrows (Larak-Musandam)", lon: [56.0, 56.8] },
+      { name: "Gulf of Oman exit", lon: [56.9, 58.3] },
+    ];
     const hzShips = [];
     let hzK = 0;
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < 200; i++) {
       hzShips.push({
         i, lane: i % 2, tracked: Math.floor(i / 2) % 3 === 0, active: false, id: "", s: 0, v: 0, vf: 1, t0: 0, stallUntil: 0,
         la: 0, lo: 0, brg: 0, pos: cart(26.4, 55.2, 11), vis: cart(26.4, 55.2, 11), rep: cart(26.4, 55.2, 11), q: null,
-        inten: 0, gerr: 0, gang: 0, gwalk: 0, fe: 4, det: false, aisDark: false, aisSet: false, linkTxt: "SATCOM", jammedLink: false, passed: false, kn: 0, sampleAt: 0,
+        inten: 0, gerr: 0, gang: 0, gwalk: 0, fe: 4, detT: 0, det: false, aisDark: false, aisSet: false, linkTxt: "SATCOM", jammedLink: false, passed: false, kn: 0, sampleAt: 0,
       });
     }
     HZ_LANES.forEach((L, li) => {
@@ -1931,6 +1917,7 @@
       sh.gang = Math.random() * 6.283;
       sh.fe = 4;
       sh.det = false;
+      sh.detT = 0;
       sh.aisDark = false;
       sh.aisSet = false;
       sh.passed = false;
@@ -1953,8 +1940,12 @@
           const lead = act[i - 1];
           const lon = sh.lo;
           const slow = lon > hzSlowLon[0] && lon < hzSlowLon[1];
-          let vd = (slow ? HZ_SLOW : HZ_CRUISE) * sh.vf;
-          if (lead) vd = Math.min(vd, lead.v + Math.max(0, lead.s - sh.s - 1400) / 70);
+          const narrows = lon > hzNarrowLon[0] && lon < hzNarrowLon[1];
+          // ships slow down and keep more room when navigation is uncertain
+          const caution = 1 - 0.35 * sh.inten;
+          let vd = (narrows ? 8 * KN : slow ? HZ_SLOW : HZ_CRUISE) * sh.vf * caution;
+          const gapMin = 1400 * (1 + 2.2 * sh.inten);
+          if (lead) vd = Math.min(vd, lead.v + Math.max(0, lead.s - sh.s - gapMin) / 70);
           let s1 = sh.s + sh.v * dw;
           if (!sh.passed && sh.s < L.gateS && s1 >= L.gateS - 30) {
             if (hz.W < L.gateAt) {
@@ -2000,12 +1991,13 @@
           if (sh.tracked) {
             const was = sh.det;
             sh.det = sh.gerr > 350;
-            if (sh.det) sh.fe = Math.min(140, sh.fe + (dw / 60) * 0.9);
-            else sh.fe += (4 - sh.fe) * (1 - Math.exp(-dw / 120));
+            if (sh.det) sh.detT += dw;
+            else sh.detT = Math.max(0, sh.detT - dw * 3);
+            sh.fe = 4 + (sh.detT > 0 ? 30 + 6 * Math.pow(sh.detT / 60, 1.5) : 0);
             if (sh.det && !was) {
-              log("hormuz", sh.id + ": GNSS spoofing suspected · using inertial + cross-checks");
+              log("hormuz", sh.id + ": GNSS fix disagrees with the inertial track \u00B7 fix flagged, dead reckoning (drifts with time)");
               hevent(sh.id, { w: hz.W, y: sh.gerr / 1000, kind: "spoof", color: "#ff6b5b" });
-            } else if (!sh.det && was) log("hormuz", sh.id + ": GNSS consistent again · fused track re-anchored");
+            } else if (!sh.det && was) log("hormuz", sh.id + ": GNSS consistent again \u00B7 track re-anchored");
             sh.linkTxt = sh.jammedLink ? "SATCOM degraded · buffering" : hzSat.ok && hz.sel === sh ? "SATCOM · SAT-" + (hzSat.a + 1) : "SATCOM";
             if (hz.W >= sh.sampleAt) {
               sh.sampleAt = hz.W + 120;
@@ -2017,11 +2009,13 @@
     }
     let hzWarm = false;
     function hzWarmup() {
-      for (let t = 0; t < 12 * 3600; t += 25) hzStep(25);
+      for (let t = 0; t < 22 * 3600; t += 25) hzStep(25);
+      hzHeat();
       hzWarm = true;
       feedLog.hormuz.length = 0;
-      log("hormuz", "Fleet online · SATCOM link manager armed");
+      log("hormuz", "Fleet online · reporting over NB-IoT and SATCOM");
     }
+    let hzHeatT = 0;
     function tickHormuz() {
       const dt = clamp(T - hz.last, 0, 0.1);
       hz.last = T;
@@ -2033,6 +2027,11 @@
       }
       if (hz.sel) hzSat.eval();
       if (hz.follow && hz.sel) hz.focus = hz.sel.vis;
+      hzHeatT -= dt;
+      if (hzHeatT <= 0) {
+        hzHeat();
+        hzHeatT = 0.6;
+      }
     }
 
     // ---- entities ----
@@ -2053,7 +2052,7 @@
       add("hormuz", { position: cart(z.la, z.lo, 0), ellipse: { semiMajorAxis: CP(r), semiMinorAxis: CP(r), height: 1, material: new C.ColorMaterialProperty(CP(() => RED.withAlpha(0.1 + 0.14 * hzLevel() * (0.6 + 0.4 * Math.sin(T * 2.2))))) , outline: true, outlineColor: RED.withAlpha(0.6) } }, () => hzLevel() > 0);
       add("hormuz", { position: cart(z.la, z.lo, 900), label: { text: CP(() => "GNSS interference (" + z.name + ", simulated)"), font: MONO, fillColor: css("#ffb3a8"), outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 700000), disableDepthTestDistance: INF } }, () => hzLevel() > 0);
     });
-    [["Strait of Hormuz", 26.55, 56.4, "≈ 21 nautical miles at its narrowest"], ["Persian Gulf", 26.6, 54.2, ""], ["Gulf of Oman", 25.1, 57.9, ""], ["Fujairah anchorage", 25.15, 56.5, ""]].forEach(([n, la, lo, sub]) =>
+    [["Strait of Hormuz", 26.78, 56.62, "\u2248 21 nautical miles at its narrowest"], ["Persian Gulf", 26.6, 54.2, ""], ["Gulf of Oman", 25.1, 57.9, ""], ["Fujairah anchorage", 25.15, 56.5, ""]].forEach(([n, la, lo, sub]) =>
       add("hormuz", { position: cart(la, lo, 0), label: { text: n + (sub ? "\n" + sub : ""), font: "600 12px Inter, system-ui, sans-serif", fillColor: css("#dbe9f4"), outlineColor: DARK, outlineWidth: 4, style: C.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new C.Cartesian2(0, -4), distanceDisplayCondition: new C.DistanceDisplayCondition(0, 900000), disableDepthTestDistance: INF } })
     );
     const hzColor = (sh) => (hz.view === "gnss" && sh.tracked ? RED : sh.tracked ? (sh.det ? AMB : SKY) : sh.aisDark ? css("#8a9aa8", 0.35) : css("#c2ccd4", 0.95));
@@ -2067,7 +2066,7 @@
       pt._lb = { scn: "hormuz", sh };
       if (sh.tracked) {
         add("hormuz", { position: CP(() => sh.vis), point: { pixelSize: 10, color: C.Color.TRANSPARENT, outlineColor: CP(() => (sh.det ? AMB : SKY).withAlpha(0.15 + 0.85 * (1 - ((T / 1.8 + sh.i * 0.13) % 1)))), outlineWidth: CP(() => 3 + 9 * ((T / 1.8 + sh.i * 0.13) % 1)), disableDepthTestDistance: INF } }, act);
-        add("hormuz", { position: CP(() => sh.rep), point: { pixelSize: 7, color: RED.withAlpha(0.9), outlineColor: WHITE, outlineWidth: 1, disableDepthTestDistance: INF } }, () => sh.active && hz.view === "fused" && sh.gerr > 250);
+        add("hormuz", { position: CP(() => sh.rep), point: { pixelSize: 9, color: C.Color.TRANSPARENT, outlineColor: RED, outlineWidth: 2.5, disableDepthTestDistance: INF } }, () => sh.active && hz.view === "fused" && sh.gerr > 250);
         add("hormuz", { polyline: { positions: CP(() => [sh.pos, sh.rep]), width: 1.5, material: new C.PolylineDashMaterialProperty({ color: RED.withAlpha(0.8), dashLength: 8 }) } }, () => sh.active && hz.view === "fused" && sh.gerr > 250);
         add("hormuz", { position: CP(() => sh.pos), point: { pixelSize: 5, color: WHITE.withAlpha(0.8), outlineColor: DARK, outlineWidth: 1, disableDepthTestDistance: INF } }, () => sh.active && hz.view === "gnss" && sh.gerr > 250);
       }
@@ -2078,7 +2077,7 @@
         text: CP(() => {
           const s = hz.sel;
           if (!s) return "";
-          return "● TRACKED · LuminaBox " + s.id + "\n" + s.kn.toFixed(0) + " kn · fused ±" + s.fe.toFixed(0) + " m · GNSS off by " + (s.gerr / 1000).toFixed(0) + " km";
+          return "● TRACKED · LuminaBox " + s.id + "\n" + s.kn.toFixed(0) + " kn \u00B7 uncertainty \u00B1" + hzUnc(s.fe) + " \u00B7 GNSS off by " + (s.gerr / 1000).toFixed(0) + " km";
         }),
         font: MONO,
         fillColor: WHITE,
@@ -2092,6 +2091,47 @@
       },
     }, () => !!hz.sel && hz.sel.active);
 
+    // lane speed heat: green flowing, amber slow, red backed up
+    const HEAT = { none: css("#5d7488", 0.5), free: css("#4ad17f", 0.95), slow: css("#ffb347", 0.97), jam: css("#ff4d3d", 1) };
+    const hzSegs = [];
+    HZ_LANES.forEach((L, li) => {
+      const n = Math.floor(L.P.total / 5000);
+      for (let k = 0; k < n; k++) {
+        const s0 = (k * L.P.total) / n;
+        const s1 = ((k + 1) * L.P.total) / n;
+        const seg = { li, s0, s1, col: HEAT.none, key: "none" };
+        const pa = pathAt(L.P, s0);
+        const pm = pathAt(L.P, (s0 + s1) / 2);
+        const pb = pathAt(L.P, s1);
+        seg.ent = add("hormuz", { polyline: { positions: C.Cartesian3.fromDegreesArrayHeights([pa.lo, pa.la, 40, pm.lo, pm.la, 40, pb.lo, pb.la, 40]), width: 6, material: new C.ColorMaterialProperty(CP(() => seg.col)) } });
+        hzSegs.push(seg);
+      }
+    });
+    function hzHeat() {
+      hzSegs.forEach((g) => {
+        const L = HZ_LANES[g.li];
+        let sum = 0;
+        let cnt = 0;
+        L.ships.forEach((s) => {
+          if (s.active && s.s >= g.s0 && s.s < g.s1) {
+            sum += s.v / (HZ_CRUISE * s.vf);
+            cnt++;
+          }
+        });
+        const key = cnt === 0 ? "none" : sum / cnt < 0.22 ? "jam" : sum / cnt < 0.62 ? "slow" : "free";
+        if (key !== g.key) {
+          g.key = key;
+          g.col = HEAT[key];
+        }
+      });
+    }
+    function hzRegions() {
+      return HZ_REGIONS.map((r) => {
+        const inR = hzShips.filter((s) => s.active && s.lo >= r.lon[0] && s.lo < r.lon[1]);
+        return { name: r.name, n: inR.length, slow: inR.filter((s) => s.v < 3.1).length, stopped: inR.filter((s) => s.v < 0.4).length };
+      });
+    }
+    const hzUnc = (m) => (m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m");
     function hzStats() {
       const win = hz.exits.filter((e) => hz.W - e.t < 3600);
       const tp = win.length;
@@ -2112,7 +2152,7 @@
       const x1 = s[s.length - 1].w;
       const mk = (key, color) => ({ pts: s.map((p) => [p.w, p[key]]), color });
       const span = (x1 - x0) / 3600;
-      return chart({ xr: [x0, x1 + 1e-6], yr: [0, 30], yfmt: (v) => v.toFixed(0), series: [mk("err", "#ff6b5b"), mk("fe", "#41b7e3")], thresholds: [{ y: 0.35, color: "#ffb347", label: "spoof detect" }], events: h.ev.map((e) => ({ x: e.w, y: Math.min(29, e.y), color: e.color })).filter((e) => e.x >= x0), xl: ["−" + span.toFixed(1) + " h", "now"], aria: "Position error: GNSS-only versus LuminaBox fused" });
+      return chart({ xr: [x0, x1 + 1e-6], yr: [0, 30], yfmt: (v) => v.toFixed(0), series: [mk("err", "#ff6b5b"), mk("fe", "#41b7e3")], thresholds: [{ y: 0.35, color: "#ffb347", label: "spoof detect" }], events: h.ev.map((e) => ({ x: e.w, y: Math.min(29, e.y), color: e.color })).filter((e) => e.x >= x0), xl: ["−" + span.toFixed(1) + " h", "now"], aria: "Position error: GNSS-only versus LuminaBox track" });
     }
     function hzSpeedChart(sh) {
       const s = HS(sh.id).s;
@@ -2136,23 +2176,28 @@
         kv("AIS dark", st.dark + " of " + st.n, st.dark > 0 ? "alert" : "") +
         kv("LuminaBox fleet", st.trk + " tracked · " + st.degraded + " GNSS-degraded", st.degraded > 0 ? "alert" : "") +
         "</div>";
+      const rg = hzRegions();
+      html +=
+        '<div class="sec-h">Backups by region</div><ul class="bk">' +
+        rg.map((r) => '<li class="' + (r.stopped > 2 ? "jam" : r.slow > 3 ? "slow" : "free") + '"><span>' + r.name + "</span><b>" + r.slow + " slow \u00B7 " + r.stopped + " stopped</b></li>").join("") +
+        '</ul><p class="lb-hint"><i class="sw sw-g"></i>flowing <i class="sw sw-a"></i>slow <i class="sw sw-r"></i>backed up (lane colour) &nbsp;&middot;&nbsp; red rings are GNSS-reported positions</p>';
       if (s) {
         html +=
           '<div class="sec-h">Selected tanker</div>' +
-          '<div class="lb-asset"><span class="lb-badge ' + (s.det ? "alert" : "ok") + '">' + (s.det ? "INERTIAL" : "GNSS OK") + "</span><b>" + s.id + '</b><small>' + HZ_LANES[s.lane].name + " lane · click any blue ship on the map to switch · " +
+          '<div class="lb-asset"><span class="lb-badge ' + (s.det ? "alert" : "ok") + '">' + (s.det ? "DEAD RECKONING" : "GNSS OK") + "</span><b>" + s.id + '</b><small>' + HZ_LANES[s.lane].name + " lane · click any blue ship on the map to switch · " +
           '<button type="button" class="tc" data-hznav="-1">◀</button> <button type="button" class="tc" data-hznav="1">▶</button></small></div>' +
           '<div class="kvs">' +
           kv("Speed", s.kn.toFixed(1) + " kn") +
-          kv("Fused position", "±" + s.fe.toFixed(0) + " m") +
+          kv("Position uncertainty", "\u00B1" + hzUnc(s.fe), s.fe > 400 ? "alert" : "") +
           kv("GNSS-only error", (s.gerr / 1000).toFixed(1) + " km", s.gerr > 350 ? "alert" : "") +
           kv("Interference", Math.round(s.inten * 100) + " %") +
           kv("Link", s.linkTxt, s.jammedLink ? "alert" : "") +
           kv("AIS", s.aisDark ? "dark" : "broadcasting", s.aisDark ? "alert" : "") +
           "</div>" +
-          hcBlock('Position error (km) <i class="lg-r"></i>GNSS-only <i class="lg-a"></i>LuminaBox fused', hzChart(s)) +
+          hcBlock('Position error (km) <i class="lg-r"></i>GNSS-only <i class="lg-a"></i>LuminaBox track', hzChart(s)) +
           hcBlock("Speed (kn)", hzSpeedChart(s));
       }
-      html += '<p class="lb-hint">The gate sets how many minutes must pass between ships entering the strait. Heavy interference means less certainty about positions, so spacing grows and a queue builds.</p>' + logHTML("hormuz");
+      html += '<p class="lb-hint">The gate sets how many minutes must pass between ships entering the strait. Inside the interference zones ships slow down and keep more room, so the channel carries fewer ships than arrive and a queue builds behind it. The inertial sensor can cover a short outage but drifts, so uncertainty keeps growing the longer GNSS is untrusted.</p>' + logHTML("hormuz");
       return html;
     }
     function hzStall() {
@@ -2539,10 +2584,10 @@
       setTimeout(() => twinGo(pp), 600);
     }
     setScenario("road", { force: true, noFly: true });
-    log("road", "10 LuminaBoxes online \u00B7 link established with BS-1 (LCC)");
-    log("warehouse", "Gateway BS-W online · " + whBox.length + " LuminaBoxes joined");
+    log("road", "10 LuminaBoxes online \u00B7 reporting over NB-IoT");
+    log("warehouse", "Warehouse tower online · " + whBox.length + " LuminaBoxes joined");
     log("shipping", "Fleet online \u00B7 " + SHIP_TEUS + " LuminaBoxes joined \u00B7 SATCOM fallback armed");
-    log("launch", "LB-201–206 armed · link BS-1");
+    log("launch", "LB-201\u2013206 armed \u00B7 NB-IoT link to the pad tower");
     void teuInPos;
     void launchOn;
   }

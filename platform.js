@@ -128,11 +128,10 @@
   const tabs = document.querySelectorAll(".at");
   const out = document.querySelector("#arch-now-text");
   const NAMES = {
-    rf: "Base station (site RF): lowest latency in range, used at warehouses, pads and ports",
-    cell: "Cell network (LTE / 5G): public coverage along roads and around cities",
-    sat: "Satellite relay (SATCOM): global coverage at sea, in remote areas and during launch",
+    cell: "Cell network (NB-IoT): used where there is cellular coverage, such as roads, cities and ports",
+    sat: "Satellite relay (SATCOM): used at sea, in remote areas and during launch",
   };
-  const ORDER = ["rf", "cell", "sat"];
+  const ORDER = ["cell", "sat"];
   let mode = "auto";
   let idx = 0;
   let timer = null;
@@ -307,4 +306,42 @@
     if (es[0].isIntersecting) v.play().catch(() => {});
     else v.pause();
   }, { threshold: 0.2 }).observe(v);
+})();
+
+
+/* ---------- What the data can tell you (concept) ---------- */
+(function () {
+  const out = document.querySelector("#ins-out");
+  if (!out) return;
+  const DATA = {
+    acc: [
+      ["Handling shocks", "How hard a container was dropped, bumped or slammed, and when."],
+      ["Road damage", "Several boxes jolting at the same spot point to a pothole or broken pavement."],
+      ["Vibration signature", "Truck, ship or rail transport has a different feel, and rough rides show up."],
+      ["Tilt and orientation", "Whether a unit was tipped over or stored on its side."],
+    ],
+    gps: [
+      ["Route and dwell time", "Where it went, how long it waited, and how far it is from where it should be."],
+      ["Arrival estimates", "ETAs from real speeds instead of timetable guesses."],
+      ["Geofences", "Alerts when a box enters or leaves a site."],
+      ["Fewer GPS fixes", "The inertial sensor fills in between fixes so the GPS can sleep and the battery lasts longer."],
+    ],
+    env: [
+      ["Temperature history", "A record of the temperatures the cargo actually saw, checked against its limits."],
+      ["Humidity and condensation", "Combined readings show when moisture could form on sensitive hardware."],
+      ["Weather exposure", "Pair with the forecast to see which boxes are about to meet bad conditions."],
+      ["Storage conditions", "Compare one warehouse bay, trailer or ship hold with another."],
+    ],
+  };
+  const btns = document.querySelectorAll(".ins-btn");
+  function show(k) {
+    btns.forEach((b) => {
+      const on = b.dataset.ins === k;
+      b.classList.toggle("is-on", on);
+      b.setAttribute("aria-selected", String(on));
+    });
+    out.innerHTML = DATA[k].map(([t, d]) => "<div class=\"ins-card\"><b>" + t + "</b><span>" + d + "</span></div>").join("");
+  }
+  btns.forEach((b) => b.addEventListener("click", () => show(b.dataset.ins)));
+  show("acc");
 })();
