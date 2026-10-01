@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumina Flows | Digital thread</title>
+    <meta
+      name="description"
+      content="A digital thread links design, simulation, hardware and operations into one traceable record. LuminaTwin applies it to spaceport planning."
+    />
+    <meta property="og:title" content="Lumina Flows | Digital thread" />
+    <meta
+      property="og:description"
+      content="Digital twins, GPU fluid simulation and LuminaBox sensors for launch sites, shipping and defense programs."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/lumina-flows-logo-cropped.png" />
+    <meta name="theme-color" content="#06121f" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="platform.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="brand" href="index.html" aria-label="Lumina Flows home">
+          <img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" />
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
+          <span class="sr-only">Toggle navigation</span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+          <a href="digital-thread.html" aria-current="page">Digital thread</a>
+          <a href="cfd.html">Real-time CFD</a>
+          <a href="luminabox.html">LuminaBox</a>
+          <a href="counter-uas.html">Counter-UAS</a>
+          <a href="twin.html">Digital twin</a>
+          <a href="consulting.html">Consulting</a>
+          <a class="nav-cta" href="index.html#contact">Talk to us</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="page-head">
+        <div class="page-head-inner">
+          <p class="crumb"><a href="index.html">Lumina Flows</a> / Digital thread</p>
+          <h1>Digital thread</h1>
+          <p class="page-lede">One record that follows a part from its first CAD model to the pad, so every number can be traced back to where it came from.</p>
+        </div>
+      </section>
+
+      <section class="section pg-body">
+        <article class="solution" id="digital-thread">
+          <div class="solution-copy">
+            <h3>Every number should be traceable</h3>
+            <p>
+              A digital thread is a connected record. The CAD model, the simulation that used it, the manufacturing
+              notes, where the part is now and what its sensors have felt are all linked together. When someone asks
+              why a call was made, you can follow the trail back. When the field teaches you something, the model gets
+              updated.
+            </p>
+            <p>
+              We keep the data in open formats so it moves between CAD, CFD, mapping and operations tools without
+              someone retyping it.
+            </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
+          </div>
+          <div class="solution-visual thread" aria-label="Digital thread diagram">
+            <ol class="thread-flow">
+              <li><span>Design</span><small>CAD · requirements</small></li>
+              <li><span>Simulate</span><small>CFD · structures</small></li>
+              <li><span>Build</span><small>manufacturing</small></li>
+              <li><span>Move</span><small>logistics · LuminaBox</small></li>
+              <li><span>Operate</span><small>sensing · weather</small></li>
+              <li><span>Decide</span><small>command view</small></li>
+            </ol>
+            <p class="thread-loop">Operational data returns to the model &#8635;</p>
+          </div>
+        </article>
+
+        <div class="section-heading">
+          <h2 id="platform-title">Turning a spaceport into something that adapts</h2>
+          <p>
+            Launches get scrubbed for all kinds of reasons. NASA's rule of thumb is that about one attempt in three
+            doesn't go. LuminaTwin is our answer: a digital twin that combines low-cost hardware with simulation
+            software, so a site can schedule smarter and adjust when something changes. LuminaBox is the hardware that
+            keeps the twin tied to the real site.
+          </p>
+        </div>
+
+        <!-- Problem -->
+        <div class="viz-row">
+          <figure class="viz-card" aria-labelledby="scrub-cap">
+            <figcaption id="scrub-cap" class="viz-title">Why it matters: scrubbed launches</figcaption>
+            <div class="scrub-icons" role="img" aria-label="Three launch attempts, one of which is scrubbed">
+              <svg viewBox="0 0 24 48" class="rk"><path d="M12 2c3 5 4 12 4 20l3 6v8l-4-3h-6l-4 3v-8l3-6c0-8 1-15 4-20z" /></svg>
+              <svg viewBox="0 0 24 48" class="rk"><path d="M12 2c3 5 4 12 4 20l3 6v8l-4-3h-6l-4 3v-8l3-6c0-8 1-15 4-20z" /></svg>
+              <svg viewBox="0 0 24 48" class="rk scrubbed"><path d="M12 2c3 5 4 12 4 20l3 6v8l-4-3h-6l-4 3v-8l3-6c0-8 1-15 4-20z" /></svg>
+            </div>
+            <p class="viz-big">1 in 3</p>
+            <p class="viz-note">of launch attempts get scrubbed, by NASA's current rule of thumb. The causes vary.</p>
+          </figure>
+
+          <figure class="viz-card" aria-labelledby="cost-cap">
+            <figcaption id="cost-cap" class="viz-title">What scrubs cost each year</figcaption>
+            <div class="bars" role="img" aria-label="Bar chart: about 20 million dollars per year today at Kennedy Space Center and Cape Canaveral Space Force Station, about 100 million dollars per year at the desired joint Air Force and Space Force launch cadence">
+              <div class="bar-row">
+                <span class="bar-lbl">Today<small>KSC + CCSFS</small></span>
+                <div class="bar-track"><div class="bar" style="--w:20%" data-tip="~$20M per year today"></div></div>
+                <span class="bar-val">~$20M</span>
+              </div>
+              <div class="bar-row">
+                <span class="bar-lbl">At target cadence<small>Joint AF / Space Force</small></span>
+                <div class="bar-track"><div class="bar hot" style="--w:100%" data-tip="~$100M per year at desired launch cadence"></div></div>
+                <span class="bar-val">~$100M</span>
+              </div>
+            </div>
+            <p class="viz-note">Not counting the cost of work delays that never turn into a scrub.</p>
+          </figure>
+        </div>
+
+        <!-- Module 1: planning -->
+        <article class="solution" id="planning">
+          <div class="solution-copy">
+            <h3>Find the traffic jam before you pour the concrete</h3>
+            <p>
+              The planning module looks at how a site really runs today and where things back up. Then it simulates
+              proposed changes, using optimization, discrete-event simulation and AI surrogate models, to find the fixes
+              that buy the most launches for the least money.
+            </p>
+            <p class="example">
+              Take fuel deliveries at Cape Canaveral. Traffic can hold up the fuel trucks, and it only gets worse as
+              launches become more frequent. With street and rail maps and a traffic simulation we can compare ideas
+              like dedicated truck lanes or more rail and see which ones are worth it.
+            </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
+          </div>
+          <div class="solution-visual compare" id="compare">
+            <div class="compare-frame">
+              <img src="assets/deck/traffic-mixed.jpg" alt="Traffic simulation with fuel trucks mixed into congested vehicle traffic." />
+              <img class="top" src="assets/deck/traffic-lane.jpg" alt="Traffic simulation with fuel trucks moving in a separate lane." style="clip-path: inset(0 50% 0 0)" />
+              <span class="tag l">Truck-lane scenario</span><span class="tag r">Mixed traffic</span>
+              <div class="handle" style="left:50%"><span></span></div>
+            </div>
+            <label class="sr-only" for="cmp">Compare simulated traffic scenarios</label>
+            <input id="cmp" type="range" min="0" max="100" value="50" />
+            <p class="visual-caption">Simulated scenarios from the LuminaTwin planning module. Drag to compare.</p>
+          </div>
+        </article>
+
+      </section>
+
+      <nav class="next-pages section" aria-label="Keep reading">
+        <h2>Keep reading</h2>
+        <ul>
+          <li><a href="cfd.html"><b>Real-time CFD</b><span>Fluid simulation fast enough to use live</span></a></li>
+          <li><a href="luminabox.html"><b>LuminaBox</b><span>The sensors that feed the thread</span></a></li>
+        </ul>
+      </nav>
+
+      <!-- 8. CONTACT -->
+      <section class="contact" id="contact" aria-labelledby="contact-title">
+        <div class="contact-inner">
+          <div>
+            <h2 id="contact-title">Tell us what you're trying to do</h2>
+            <p>
+              It might be a consulting question, a pilot program, or a hard problem you haven't managed to simulate yet.
+              Send us a note and we'll tell you honestly whether we can help.
+            </p>
+          </div>
+          <address class="contact-card">
+            <span>Email</span>
+            <!-- TODO: Replace this placeholder with the company's verified email address. -->
+            <a href="mailto:contact@company.com">contact@company.com</a>
+            <a class="button primary full" href="mailto:contact@company.com?subject=Hello%20from%20the%20website">Write to us</a>
+          </address>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <a href="index.html" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
+      </div>
+      <nav class="foot-nav" aria-label="Footer">
+          <a href="digital-thread.html">Digital thread</a>
+          <a href="cfd.html">Real-time CFD</a>
+          <a href="luminabox.html">LuminaBox</a>
+          <a href="counter-uas.html">Counter-UAS</a>
+          <a href="twin.html">Digital twin</a>
+          <a href="consulting.html">Consulting</a>
+      </nav>
+      <p>&copy; <span id="year"></span> Lumina Flows. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="platform.js"></script>
+  </body>
+</html>

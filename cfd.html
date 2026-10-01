@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumina Flows | Real-time CFD</title>
+    <meta
+      name="description"
+      content="GPU-accelerated fluid simulation and weather refined to the scale of a building, used to adapt work plans as the forecast changes."
+    />
+    <meta property="og:title" content="Lumina Flows | Real-time CFD" />
+    <meta
+      property="og:description"
+      content="Digital twins, GPU fluid simulation and LuminaBox sensors for launch sites, shipping and defense programs."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/lumina-flows-logo-cropped.png" />
+    <meta name="theme-color" content="#06121f" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="platform.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="brand" href="index.html" aria-label="Lumina Flows home">
+          <img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" />
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
+          <span class="sr-only">Toggle navigation</span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+          <a href="digital-thread.html">Digital thread</a>
+          <a href="cfd.html" aria-current="page">Real-time CFD</a>
+          <a href="luminabox.html">LuminaBox</a>
+          <a href="counter-uas.html">Counter-UAS</a>
+          <a href="twin.html">Digital twin</a>
+          <a href="consulting.html">Consulting</a>
+          <a class="nav-cta" href="index.html#contact">Talk to us</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="page-head">
+        <div class="page-head-inner">
+          <p class="crumb"><a href="index.html">Lumina Flows</a> / Real-time CFD</p>
+          <h1>Real-time CFD</h1>
+          <p class="page-lede">Fluid simulation on GPUs that finishes while the decision is still open, and a forecast refined to the scale of a single building.</p>
+        </div>
+      </section>
+
+      <section class="section pg-body">
+        <article class="solution" id="cfd">
+          <div class="solution-copy">
+            <h3>Fluid simulation that finishes before the decision does</h3>
+            <p>
+              Running CFD on GPUs turns an overnight job into something you can use during planning, or even live. One
+              example is our faster-than-real-time simulation of the air around a vertical Artemis 2 stack, shown here.
+              We use the same approach for ship airwake, exhaust plumes and the turbulent air close to the ground.
+            </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road","res":"fine","site":"vab"}'>See it in the model &rarr;</button></p>
+          </div>
+          <div class="solution-visual sim-trio">
+            <figure class="rocket-cfd">
+              <div class="rocket-frame">
+                <video
+                  id="rocket-video"
+                  src="assets/deck/artemis2-cfd.mp4"
+                  poster="assets/deck/artemis2-poster.jpg"
+                  muted
+                  loop
+                  playsinline
+                  preload="metadata"
+                  aria-label="Faster-than-real-time CFD simulation of the wake around a vertical Artemis 2 configuration on the pad"
+                ></video>
+                <img class="rocket-logo" src="assets/deck/luminatwin-logo.png" alt="LuminaTwin" />
+                <button class="video-toggle" id="rocket-toggle" type="button" aria-pressed="true">Pause</button>
+              </div>
+              <figcaption>Faster-than-real-time flow simulation of a vertical Artemis 2 on the pad</figcaption>
+            </figure>
+            <figure>
+              <img src="assets/tech/ShipAirwake.png" alt="Ship airwake CFD velocity contours." />
+              <figcaption>Ship airwake</figcaption>
+            </figure>
+            <figure>
+              <img src="assets/tech/turbABL.png" alt="Turbulent atmospheric boundary layer CFD isosurfaces." />
+              <figcaption>Atmospheric boundary layer</figcaption>
+            </figure>
+            <figure>
+              <img src="assets/tech/Plume.png" alt="Jet plume mass fraction CFD contour." />
+              <figcaption>Plume dispersion</figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <!-- Module 2 + weather resolution -->
+        <article class="solution reverse">
+          <div class="solution-copy">
+            <h3>A forecast for the pad, not for the county</h3>
+            <p>
+              Public weather models work on cells a couple of miles wide. We refine NOAA forecasts down to about a foot,
+              so you know what the wind is doing at a particular crane or building, faster than real time. Managers use
+              that to re-plan the day. The same idea works for a supply-chain hiccup or someone calling in sick.
+            </p>
+            <p class="example">
+              That is roughly <strong>9,500 times</strong> finer in each direction. 1.8 miles is about 9,500 feet.
+            </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road","res":"fine","site":"vab"}'>See it in the model &rarr;</button></p>
+          </div>
+          <figure class="solution-visual resgrid" aria-labelledby="res-cap">
+            <div class="res-pair">
+              <div>
+                <svg viewBox="0 0 200 200" role="img" aria-label="One coarse forecast grid cell with a single wind vector"><defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="#fff" /></marker></defs><rect x="4" y="4" width="192" height="192" class="coarse" /><line x1="60" y1="130" x2="140" y2="70" class="cv" marker-end="url(#ah2)" /></svg>
+                <span>One NOAA model cell<br /><b>1.8 mi</b></span>
+              </div>
+              <div class="res-arrow" aria-hidden="true">→</div>
+              <div>
+                <svg viewBox="0 0 200 200" id="fine" role="img" aria-label="The same area resolved as a fine grid of varying wind speeds"></svg>
+                <span>What we resolve<br /><b>1 ft</b></span>
+              </div>
+            </div>
+            <figcaption id="res-cap">A sketch. The cell counts are not to scale.</figcaption>
+          </figure>
+        </article>
+
+
+        <!-- Adaptive work tasking -->
+        <div class="tasking" id="tasking" aria-labelledby="task-title">
+          <div class="task-head">
+            <h3 id="task-title">When the forecast turns, the plan turns with it</h3>
+            <p>
+              LuminaTwin checks every scheduled task against the forecast. If a task would put someone outside in bad
+              weather, it gets swapped for useful indoor work. Nobody is exposed, and nobody stands around waiting.
+            </p>
+          </div>
+          <ol class="task-steps">
+            <li><b>1. Spot it</b><span>The forecast shows lightning within 5 nautical miles of the pad.</span></li>
+            <li><b>2. Check the plan</b><span>The twin looks at each task: is it outdoors, and how close to the pad?</span></li>
+            <li><b>3. Move the work</b><span>Exposed tasks move indoors or later, and the crew is told.</span></li>
+          </ol>
+          <div class="task-control" role="group" aria-label="Forecast scenario">
+            <span class="task-ctl-l">Forecast for the pad:</span>
+            <button type="button" class="is-on" data-fc="clear">Clear skies</button>
+            <button type="button" data-fc="storm">Thunderstorm in 30 min</button>
+          </div>
+          <div class="task-wrap">
+            <table class="task-table" aria-live="polite">
+              <thead><tr><th>Crew</th><th>Task</th><th>Where</th><th>Status</th></tr></thead>
+              <tbody id="task-body"></tbody>
+            </table>
+          </div>
+          <p class="task-result" id="task-result"></p>
+          <div class="task-actions">
+            <button type="button" class="see-model" data-go='{"scn":"road","res":"fine"}'>See the weather in the model &rarr;</button>
+          </div>
+        </div>
+
+      </section>
+
+      <nav class="next-pages section" aria-label="Keep reading">
+        <h2>Keep reading</h2>
+        <ul>
+          <li><a href="twin.html"><b>Digital twin</b><span>Try the 3D model with live weather</span></a></li>
+          <li><a href="luminabox.html"><b>LuminaBox</b><span>Track assets across a site</span></a></li>
+        </ul>
+      </nav>
+
+      <!-- 8. CONTACT -->
+      <section class="contact" id="contact" aria-labelledby="contact-title">
+        <div class="contact-inner">
+          <div>
+            <h2 id="contact-title">Tell us what you're trying to do</h2>
+            <p>
+              It might be a consulting question, a pilot program, or a hard problem you haven't managed to simulate yet.
+              Send us a note and we'll tell you honestly whether we can help.
+            </p>
+          </div>
+          <address class="contact-card">
+            <span>Email</span>
+            <!-- TODO: Replace this placeholder with the company's verified email address. -->
+            <a href="mailto:contact@company.com">contact@company.com</a>
+            <a class="button primary full" href="mailto:contact@company.com?subject=Hello%20from%20the%20website">Write to us</a>
+          </address>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <a href="index.html" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
+      </div>
+      <nav class="foot-nav" aria-label="Footer">
+          <a href="digital-thread.html">Digital thread</a>
+          <a href="cfd.html">Real-time CFD</a>
+          <a href="luminabox.html">LuminaBox</a>
+          <a href="counter-uas.html">Counter-UAS</a>
+          <a href="twin.html">Digital twin</a>
+          <a href="consulting.html">Consulting</a>
+      </nav>
+      <p>&copy; <span id="year"></span> Lumina Flows. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="platform.js"></script>
+  </body>
+</html>

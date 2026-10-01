@@ -2054,15 +2054,15 @@
         if (b) setLinkFilter(b.dataset.lf);
       });
     const TECH = {
-      road: [["LuminaBox sensing", "#luminabox"], ["Road health", "#roadhealth"], ["Digital thread", "#digital-thread"], ["Planning", "#platform"], ["Connectivity", "#arch"]],
-      warehouse: [["LuminaBox sensing", "#luminabox"], ["Digital thread", "#digital-thread"], ["Connectivity", "#arch"]],
-      shipping: [["Logistics", "#logistics"], ["Connectivity", "#arch"], ["Digital thread", "#digital-thread"]],
-      launch: [["Real-time CFD", "#cfd"], ["Connectivity", "#arch"], ["Digital thread", "#digital-thread"]],
+      road: [["LuminaBox sensing", "luminabox.html#luminabox"], ["Road health", "luminabox.html#roadhealth"], ["Digital thread", "digital-thread.html"], ["Planning", "digital-thread.html#planning"], ["Connectivity", "luminabox.html#arch"]],
+      warehouse: [["LuminaBox sensing", "luminabox.html#luminabox"], ["Digital thread", "digital-thread.html"], ["Connectivity", "luminabox.html#arch"]],
+      shipping: [["Logistics", "luminabox.html#logistics"], ["Connectivity", "luminabox.html#arch"], ["Digital thread", "digital-thread.html"]],
+      launch: [["Real-time CFD", "cfd.html"], ["Connectivity", "luminabox.html#arch"], ["Digital thread", "digital-thread.html"]],
     };
     function renderTech(id) {
       const el = $("#tech-chips");
       if (!el) return;
-      el.innerHTML = '<span class="tabs-label">Technologies in this view</span>' + TECH[id].map(([t, h]) => '<a class="tchip" href="index.html' + h + '" target="_top">' + t + "</a>").join("");
+      el.innerHTML = '<span class="tabs-label">Technologies in this view</span>' + TECH[id].map(([t, h]) => '<a class="tchip" href="' + h + '" target="_top">' + t + "</a>").join("");
     }
     function twinGo(p) {
       if (p.res === "fine" && !p.scn && active !== "road" && active !== "warehouse") p.scn = "road";

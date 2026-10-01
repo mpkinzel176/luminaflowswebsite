@@ -2280,3 +2280,127 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Multi-page layout ---------- */
+.nav-links a[aria-current="page"] {
+  color: #fff;
+  box-shadow: 0 2px 0 var(--yellow);
+}
+
+.page-head {
+  padding: clamp(2.6rem, 5vw, 4.2rem) 0 0.5rem;
+  background: linear-gradient(180deg, #0b2036 0%, var(--bg) 100%);
+}
+
+.page-head-inner {
+  width: min(var(--max-width), calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.crumb {
+  margin: 0 0 0.8rem;
+  color: var(--steel);
+  font-size: 0.88rem;
+}
+
+.crumb a {
+  color: var(--sky-soft);
+  text-decoration: none;
+}
+
+.crumb a:hover {
+  color: var(--yellow);
+}
+
+.page-head h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.page-lede {
+  max-width: 40rem;
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  font-size: 1.15rem;
+}
+
+.pg-body {
+  padding-top: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.pg-body > .section-heading:first-child {
+  margin-top: 1rem;
+}
+
+.what-list h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.what-list h3 a:hover {
+  color: var(--yellow);
+}
+
+.next-pages {
+  padding-top: 1rem;
+  padding-bottom: 3.5rem;
+}
+
+.next-pages h2 {
+  font-size: 1.5rem;
+}
+
+.next-pages ul {
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.8rem;
+}
+
+.next-pages a {
+  display: block;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-decoration: none;
+  background: var(--panel);
+}
+
+.next-pages a:hover {
+  border-color: var(--sky);
+}
+
+.next-pages b {
+  display: block;
+  color: #fff;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 1.15rem;
+}
+
+.next-pages span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.foot-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+}
+
+.foot-nav a {
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.foot-nav a:hover {
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .site-footer {
+    gap: 1rem;
+  }
+}

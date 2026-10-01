@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumina Flows | Counter-UAS</title>
+    <meta
+      name="description"
+      content="Counter-UAS sensor fusion that accounts for how wind, turbulence and nearby buildings change what sensors can see."
+    />
+    <meta property="og:title" content="Lumina Flows | Counter-UAS" />
+    <meta
+      property="og:description"
+      content="Digital twins, GPU fluid simulation and LuminaBox sensors for launch sites, shipping and defense programs."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/lumina-flows-logo-cropped.png" />
+    <meta name="theme-color" content="#06121f" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="platform.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="brand" href="index.html" aria-label="Lumina Flows home">
+          <img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" />
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
+          <span class="sr-only">Toggle navigation</span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+          <a href="digital-thread.html">Digital thread</a>
+          <a href="cfd.html">Real-time CFD</a>
+          <a href="luminabox.html">LuminaBox</a>
+          <a href="counter-uas.html" aria-current="page">Counter-UAS</a>
+          <a href="twin.html">Digital twin</a>
+          <a href="consulting.html">Consulting</a>
+          <a class="nav-cta" href="index.html#contact">Talk to us</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="page-head">
+        <div class="page-head-inner">
+          <p class="crumb"><a href="index.html">Lumina Flows</a> / Counter-UAS</p>
+          <h1>Counter-UAS</h1>
+          <p class="page-lede">Putting several sensors together into one picture of what is in the air.</p>
+        </div>
+      </section>
+
+      <section class="section pg-body">
+        <article class="solution reverse" id="cuas">
+          <div class="solution-copy">
+            <h3>One picture of what is in the air</h3>
+            <p>
+              Counter-UAS is mostly a sensor-fusion problem. Radar, cameras and radio sensors each see part of the
+              story, and an operator needs one picture. We combine them, and we add something most systems leave out:
+              how wind, turbulence and nearby buildings change what the sensors can see and when a response can work.
+            </p>
+          </div>
+          <div class="solution-visual radar" aria-label="Layered counter-UAS coverage concept">
+            <svg viewBox="0 0 400 400" role="img" aria-label="Concentric detection and response layers with a tracked object">
+              <g fill="none" stroke="currentColor" stroke-width="1">
+                <circle cx="200" cy="200" r="170" class="ring r3" />
+                <circle cx="200" cy="200" r="115" class="ring r2" />
+                <circle cx="200" cy="200" r="60" class="ring r1" />
+                <line x1="200" y1="20" x2="200" y2="380" opacity=".25" />
+                <line x1="20" y1="200" x2="380" y2="200" opacity=".25" />
+              </g>
+              <path class="sweep" d="M200 200 L200 30 A170 170 0 0 1 330 90 Z" />
+              <circle cx="200" cy="200" r="5" class="dot-own" />
+              <g class="track">
+                <circle cx="290" cy="110" r="5" class="dot-hostile" />
+                <circle cx="290" cy="110" r="14" class="dot-halo" fill="none" />
+                <text x="302" y="104">TRK-01</text>
+              </g>
+              <text x="212" y="38" class="lbl">Detect</text>
+              <text x="212" y="92" class="lbl">Track</text>
+              <text x="212" y="146" class="lbl">Respond</text>
+            </svg>
+            <p class="visual-caption">A concept sketch of layered coverage, not real data.</p>
+          </div>
+        </article>
+      </section>
+
+      <nav class="next-pages section" aria-label="Keep reading">
+        <h2>Keep reading</h2>
+        <ul>
+          <li><a href="cfd.html"><b>Real-time CFD</b><span>How we model wind around structures</span></a></li>
+          <li><a href="consulting.html"><b>Consulting</b><span>Working with defense teams</span></a></li>
+        </ul>
+      </nav>
+
+      <!-- 8. CONTACT -->
+      <section class="contact" id="contact" aria-labelledby="contact-title">
+        <div class="contact-inner">
+          <div>
+            <h2 id="contact-title">Tell us what you're trying to do</h2>
+            <p>
+              It might be a consulting question, a pilot program, or a hard problem you haven't managed to simulate yet.
+              Send us a note and we'll tell you honestly whether we can help.
+            </p>
+          </div>
+          <address class="contact-card">
+            <span>Email</span>
+            <!-- TODO: Replace this placeholder with the company's verified email address. -->
+            <a href="mailto:contact@company.com">contact@company.com</a>
+            <a class="button primary full" href="mailto:contact@company.com?subject=Hello%20from%20the%20website">Write to us</a>
+          </address>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <a href="index.html" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
+      </div>
+      <nav class="foot-nav" aria-label="Footer">
+          <a href="digital-thread.html">Digital thread</a>
+          <a href="cfd.html">Real-time CFD</a>
+          <a href="luminabox.html">LuminaBox</a>
+          <a href="counter-uas.html">Counter-UAS</a>
+          <a href="twin.html">Digital twin</a>
+          <a href="consulting.html">Consulting</a>
+      </nav>
+      <p>&copy; <span id="year"></span> Lumina Flows. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="platform.js"></script>
+  </body>
+</html>

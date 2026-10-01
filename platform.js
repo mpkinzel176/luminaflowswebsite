@@ -236,7 +236,12 @@
       return;
     }
     // phones: the model opens as its own page
-    if (window.innerWidth < 760 || !frame) {
+    if (!frame) {
+      // other pages: go to the standalone model with this view
+      location.href = "twin.html?" + query(p);
+      return;
+    }
+    if (window.innerWidth < 760) {
       window.open("twin.html?" + query(p), "_blank");
       return;
     }
