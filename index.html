@@ -163,6 +163,7 @@
               <li><strong>Interoperability:</strong> open data exchange between CAD, CFD, GIS, and operations tools.</li>
               <li><strong>Visibility:</strong> one view across engineering, logistics, and command.</li>
             </ul>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual thread" aria-label="Digital thread diagram">
             <ol class="thread-flow">
@@ -192,6 +193,7 @@
               <li>Road-health flagging: a tanker hitting a bump reports it to command for remediation.</li>
               <li>Dynamic work tasking that re-plans when supply or weather breaks the chain.</li>
             </ul>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"shipping"}'>See it in the model &rarr;</button></p>
           </div>
           <figure class="solution-visual media">
             <img src="assets/tech/Tanker.png" alt="Fuel tanker incident above, with a CFD slosh simulation of the tanker below showing liquid volume fraction, velocity, and force histories." />
@@ -213,6 +215,7 @@
               <li><strong>Fidelity:</strong> resolved turbulence and geometry, not lookup tables.</li>
               <li><strong>Decision support:</strong> results delivered in the context of the mission.</li>
             </ul>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road","res":"fine","site":"vab"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual sim-trio">
             <figure class="rocket-cfd">
@@ -332,25 +335,116 @@
         </div>
 
         <!-- Architecture -->
-        <figure class="arch" aria-labelledby="arch-cap">
-          <figcaption id="arch-cap" class="viz-title">System architecture</figcaption>
-          <svg viewBox="0 0 1000 300" role="img" aria-label="Diagram: LuminaBox sensors on containers, tankers and vehicles report to a base station, which feeds LuminaTwin's planning and operations modules, which produce infrastructure recommendations and adaptive work plans.">
-            <defs>
-              <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L9 5L0 9z" fill="#41b7e3" /></marker>
-            </defs>
-            <g class="node"><rect x="10" y="30" width="200" height="240" rx="8" /><text x="110" y="58" class="nh">FIELD</text>
-              <text x="110" y="100" class="nt">Containers</text><text x="110" y="128" class="nt">Tankers</text><text x="110" y="156" class="nt">Vehicles · payloads</text>
-              <rect x="30" y="178" width="160" height="78" rx="6" class="box" /><text x="110" y="203" class="nt strong">LuminaBox</text><text x="110" y="224" class="ns">collision · vibration</text><text x="110" y="240" class="ns">temp · humidity</text></g>
-            <path d="M212 150 H262" class="flow" marker-end="url(#ah)" />
-            <g class="node"><rect x="266" y="100" width="150" height="100" rx="8" /><text x="341" y="138" class="nt strong">Base station</text><text x="341" y="162" class="ns">real-time site feed</text></g>
-            <path d="M418 150 H468" class="flow" marker-end="url(#ah)" />
-            <g class="node twin"><rect x="472" y="20" width="270" height="260" rx="8" /><text x="607" y="48" class="nh">LUMINATWIN</text>
-              <rect x="492" y="64" width="230" height="92" rx="6" class="box" /><text x="607" y="90" class="nt strong">1 · Planning</text><text x="607" y="112" class="ns">bottleneck search · optimization</text><text x="607" y="130" class="ns">discrete-event sim · AI surrogates</text>
-              <rect x="492" y="168" width="230" height="92" rx="6" class="box" /><text x="607" y="194" class="nt strong">2 · Operations</text><text x="607" y="216" class="ns">weather-aware work planning</text><text x="607" y="234" class="ns">on-the-fly retasking</text></g>
-            <path d="M744 110 H794" class="flow" marker-end="url(#ah)" /><path d="M744 214 H794" class="flow" marker-end="url(#ah)" />
-            <g class="node out"><rect x="798" y="70" width="190" height="80" rx="8" /><text x="893" y="106" class="nt strong">Infrastructure plan</text><text x="893" y="128" class="ns">cost vs. cadence gain</text></g>
-            <g class="node out"><rect x="798" y="174" width="190" height="80" rx="8" /><text x="893" y="210" class="nt strong">Adaptive work plan</text><text x="893" y="232" class="ns">daily tasking</text></g>
-          </svg>
+        <figure class="arch" id="arch" aria-labelledby="arch-cap">
+          <figcaption id="arch-cap" class="viz-title">System architecture · how LuminaBox data reaches LuminaTwin</figcaption>
+          <div class="arch-tabs" role="group" aria-label="Connectivity path">
+            <button type="button" class="at is-on" data-path="auto">Auto failover</button>
+            <button type="button" class="at at-rf" data-path="rf"><i></i>Base station</button>
+            <button type="button" class="at at-cell" data-path="cell"><i></i>Cell network</button>
+            <button type="button" class="at at-sat" data-path="sat"><i></i>Satellite (SATCOM)</button>
+          </div>
+          <div class="arch-scroll">
+            <svg id="arch-svg" data-active="rf" viewBox="0 0 1000 340" role="img" aria-label="Diagram: a LuminaBox link manager chooses between a base station, the cell network, or satellite SATCOM. All three reach an ingest gateway, which feeds LuminaTwin's planning and operations modules, which produce infrastructure plans and adaptive work plans.">
+              <defs>
+                <marker id="ah-rf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L9 5L0 9z" fill="#41b7e3" /></marker>
+                <marker id="ah-cell" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L9 5L0 9z" fill="#5fd08a" /></marker>
+                <marker id="ah-sat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L9 5L0 9z" fill="#b58cff" /></marker>
+                <marker id="ah-w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L9 5L0 9z" fill="#c6d8e6" /></marker>
+              </defs>
+
+              <!-- FIELD -->
+              <g class="node">
+                <rect x="8" y="14" width="196" height="312" rx="8" />
+                <text x="106" y="40" class="nh">FIELD</text>
+                <text x="106" y="60" class="ns">containers · tankers</text>
+                <text x="106" y="73" class="ns">vehicles · payloads</text>
+                <rect x="24" y="86" width="164" height="226" rx="6" class="box" />
+                <text x="106" y="110" class="nt strong">LuminaBox</text>
+                <text x="106" y="130" class="ns">collision · vibration</text>
+                <text x="106" y="145" class="ns">temp · humidity · GNSS</text>
+                <rect x="40" y="170" width="132" height="124" rx="6" class="box lm" />
+                <text x="106" y="194" class="nt strong">Link manager</text>
+                <text x="106" y="213" class="ns">picks the best path,</text>
+                <text x="106" y="227" class="ns">auto failover,</text>
+                <text x="106" y="241" class="ns">buffers offline</text>
+                <text x="106" y="276" class="ns warn">offline: buffer &amp; sync</text>
+              </g>
+
+              <!-- LINK TYPES -->
+              <g class="lnode lnode-rf" data-go='{"scn":"warehouse","link":"rf"}' role="button" tabindex="0" aria-label="Base station: see it in the model">
+                <rect x="268" y="28" width="168" height="76" rx="8" />
+                <text x="352" y="54" class="nt strong">Base station</text>
+                <text x="352" y="72" class="ns">site RF · 1–5 km · private</text>
+                <text x="352" y="90" class="ns use">warehouse · pad · port</text>
+              </g>
+              <g class="lnode lnode-cell" data-go='{"scn":"road","link":"cell"}' role="button" tabindex="0" aria-label="Cell network: see it in the model">
+                <rect x="268" y="132" width="168" height="76" rx="8" />
+                <text x="352" y="158" class="nt strong">Cell network</text>
+                <text x="352" y="176" class="ns">LTE / 5G · public carrier</text>
+                <text x="352" y="194" class="ns use">roads · cities · ports</text>
+              </g>
+              <g class="lnode lnode-sat" data-go='{"scn":"shipping","link":"sat"}' role="button" tabindex="0" aria-label="Satellite relay: see it in the model">
+                <rect x="268" y="236" width="168" height="76" rx="8" />
+                <text x="352" y="262" class="nt strong">Satellite relay</text>
+                <text x="352" y="280" class="ns">LEO SATCOM · global</text>
+                <text x="352" y="298" class="ns use">sea · remote · launch</text>
+              </g>
+
+              <!-- paths: field -> link node -->
+              <path id="p-rf1" d="M204 210 C236 210 236 66 266 66" class="pth pth-rf" marker-end="url(#ah-rf)" />
+              <path id="p-cell1" d="M204 220 C240 220 240 170 266 170" class="pth pth-cell" marker-end="url(#ah-cell)" />
+              <path id="p-sat1" d="M204 230 C236 230 236 274 266 274" class="pth pth-sat" marker-end="url(#ah-sat)" />
+              <!-- paths: link node -> gateway -->
+              <path id="p-rf2" d="M436 66 C470 66 470 158 500 158" class="pth pth-rf" marker-end="url(#ah-rf)" />
+              <path id="p-cell2" d="M436 170 L498 170" class="pth pth-cell" marker-end="url(#ah-cell)" />
+              <path id="p-sat2" d="M436 274 C470 274 470 182 500 182" class="pth pth-sat" marker-end="url(#ah-sat)" />
+
+              <!-- GATEWAY -->
+              <g class="node">
+                <rect x="502" y="120" width="108" height="100" rx="8" />
+                <text x="556" y="150" class="nt strong">Ingest</text>
+                <text x="556" y="168" class="nt strong">gateway</text>
+                <text x="556" y="188" class="ns">secure link</text>
+                <text x="556" y="203" class="ns">de-duplicated</text>
+              </g>
+              <path id="p-gw" d="M610 170 L650 170" class="pth pth-all" marker-end="url(#ah-w)" />
+
+              <!-- LUMINATWIN -->
+              <g class="node twin">
+                <rect x="652" y="14" width="190" height="312" rx="8" />
+                <text x="747" y="40" class="nh">LUMINATWIN</text>
+                <g class="mod" data-go='{"scn":"road","link":"all"}' role="button" tabindex="0" aria-label="Planning module: see it in the model">
+                  <rect x="668" y="56" width="158" height="120" rx="6" class="box" />
+                  <text x="747" y="82" class="nt strong">1 · Planning</text>
+                  <text x="747" y="104" class="ns">bottleneck search</text>
+                  <text x="747" y="119" class="ns">optimization</text>
+                  <text x="747" y="134" class="ns">discrete-event sim</text>
+                  <text x="747" y="149" class="ns">AI surrogates</text>
+                </g>
+                <g class="mod" data-go='{"scn":"road","res":"fine"}' role="button" tabindex="0" aria-label="Operations module: see it in the model">
+                  <rect x="668" y="188" width="158" height="122" rx="6" class="box" />
+                  <text x="747" y="214" class="nt strong">2 · Operations</text>
+                  <text x="747" y="236" class="ns">weather-aware planning</text>
+                  <text x="747" y="251" class="ns">CFD downscaling</text>
+                  <text x="747" y="266" class="ns">on-the-fly retasking</text>
+                </g>
+              </g>
+              <path d="M842 116 L886 116" class="pth pth-all" marker-end="url(#ah-w)" />
+              <path d="M842 250 L886 250" class="pth pth-all" marker-end="url(#ah-w)" />
+
+              <!-- OUTPUTS -->
+              <g class="node out"><rect x="888" y="78" width="106" height="76" rx="8" /><text x="941" y="106" class="nt strong">Infrastructure</text><text x="941" y="124" class="nt strong">plan</text><text x="941" y="142" class="ns">cost vs. cadence</text></g>
+              <g class="node out"><rect x="888" y="212" width="106" height="76" rx="8" /><text x="941" y="240" class="nt strong">Adaptive</text><text x="941" y="258" class="nt strong">work plan</text><text x="941" y="276" class="ns">daily tasking</text></g>
+
+              <!-- animated packets on the active path -->
+              <g class="pk pk-rf"><circle r="4"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#p-rf1" /></animateMotion></circle><circle r="4"><animateMotion dur="2.2s" begin="1.1s" repeatCount="indefinite"><mpath href="#p-rf1" /></animateMotion></circle><circle r="4"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#p-rf2" /></animateMotion></circle><circle r="4"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#p-rf2" /></animateMotion></circle></g>
+              <g class="pk pk-cell"><circle r="4"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#p-cell1" /></animateMotion></circle><circle r="4"><animateMotion dur="2.2s" begin="1.1s" repeatCount="indefinite"><mpath href="#p-cell1" /></animateMotion></circle><circle r="4"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#p-cell2" /></animateMotion></circle><circle r="4"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#p-cell2" /></animateMotion></circle></g>
+              <g class="pk pk-sat"><circle r="4"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#p-sat1" /></animateMotion></circle><circle r="4"><animateMotion dur="2.6s" begin="1.3s" repeatCount="indefinite"><mpath href="#p-sat1" /></animateMotion></circle><circle r="4"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#p-sat2" /></animateMotion></circle><circle r="4"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#p-sat2" /></animateMotion></circle></g>
+              <g class="pk pk-all"><circle r="4"><animateMotion dur="0.9s" repeatCount="indefinite"><mpath href="#p-gw" /></animateMotion></circle></g>
+            </svg>
+          </div>
+          <p class="arch-now" id="arch-now"><b>Active path:</b> <span id="arch-now-text">Base station (site RF)</span></p>
+          <p class="viz-note">The link manager prefers the lowest-latency path in range and fails over without losing data. Select a path above, or click a node to see it in the 3D model.</p>
         </figure>
 
         <!-- Module 1: planning -->
@@ -368,6 +462,7 @@
               problem worsens as cadence rises. Street and rail maps plus traffic and discrete-event simulation
               identify which projects, such as dedicated truck lanes or expanded rail, pay off.
             </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual compare" id="compare">
             <div class="compare-frame">
@@ -395,6 +490,7 @@
             <p class="example">
               A linear resolution gain of roughly <strong>9,500&times;</strong> (1.8 mi is about 9,500 ft).
             </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road","res":"fine","site":"vab"}'>See it in the model &rarr;</button></p>
           </div>
           <figure class="solution-visual resgrid" aria-labelledby="res-cap">
             <div class="res-pair">
@@ -412,25 +508,36 @@
           </figure>
         </article>
 
-        <!-- Work tasking -->
-        <div class="tasking" aria-labelledby="task-title">
-          <h3 id="task-title" class="viz-title">Adaptive work tasking</h3>
-          <div class="task-compare">
-            <div class="task-col">
-              <span class="task-state ok">Clear</span>
-              <ul>
-                <li><span class="worker">John</span>Move active payload to launch pad</li>
-                <li><span class="worker">Jane</span>Environmental inspection around launch pad</li>
-              </ul>
-            </div>
-            <div class="task-mid"><span class="warn">&#9888; Inclement weather approaching</span><span class="arrow">Retasking &rarr;</span></div>
-            <div class="task-col">
-              <span class="task-state hold">Retasked</span>
-              <ul>
-                <li><span class="worker">John</span>Move stored pending payload to testing area</li>
-                <li><span class="worker">Jane</span>Finish report for previous inspection</li>
-              </ul>
-            </div>
+        <!-- Adaptive work tasking -->
+        <div class="tasking" id="tasking" aria-labelledby="task-title">
+          <div class="task-head">
+            <p class="solution-tag">Operations module · adaptive work tasking</p>
+            <h3 id="task-title">When the weather changes, the work plan changes with it.</h3>
+            <p>
+              LuminaTwin watches the high-resolution forecast and checks every scheduled task against it. Tasks that
+              would put people outdoors in unsafe conditions are swapped for useful indoor work, so nobody stands idle
+              and nobody is exposed.
+            </p>
+          </div>
+          <ol class="task-steps">
+            <li><b>1 · Detect</b><span>The forecast shows lightning within 5 nautical miles of the pad.</span></li>
+            <li><b>2 · Check</b><span>The twin looks at each task: is it outdoors, and how close to the pad?</span></li>
+            <li><b>3 · Reassign</b><span>Exposed tasks move indoors or later. The crew is notified.</span></li>
+          </ol>
+          <div class="task-control" role="group" aria-label="Forecast scenario">
+            <span class="task-ctl-l">Forecast for the pad</span>
+            <button type="button" class="is-on" data-fc="clear">Clear skies</button>
+            <button type="button" data-fc="storm">Thunderstorm in 30 min</button>
+          </div>
+          <div class="task-wrap">
+            <table class="task-table" aria-live="polite">
+              <thead><tr><th>Crew</th><th>Task</th><th>Where</th><th>Status</th></tr></thead>
+              <tbody id="task-body"></tbody>
+            </table>
+          </div>
+          <p class="task-result" id="task-result"></p>
+          <div class="task-actions">
+            <button type="button" class="see-model" data-go='{"scn":"road","res":"fine"}'>See the weather in the model &rarr;</button>
           </div>
         </div>
 
@@ -447,6 +554,7 @@
             <ul class="chips" aria-label="LuminaBox sensing channels">
               <li>Collision</li><li>Vibration</li><li>Temperature</li><li>Humidity</li><li>Location</li>
             </ul>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"warehouse"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual hw">
             <img src="assets/deck/luminabox-b.jpg" alt="LuminaBox prototype enclosure, orange, on a wooden table." />
@@ -455,7 +563,7 @@
         </article>
 
         <!-- Road health -->
-        <article class="solution reverse">
+        <article class="solution reverse" id="roadhealth">
           <div class="solution-copy">
             <p class="solution-tag">Use case · road health</p>
             <h3>Flag road damage before it becomes a problem.</h3>
@@ -463,6 +571,7 @@
               A LuminaBox on a fuel tanker registers a vertical acceleration spike when the truck hits a bump, and the
               affected road segment is reported to the command center for remediation.
             </p>
+            <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
           </div>
           <figure class="solution-visual trace" id="trace">
             <div class="viz-title-row"><span class="viz-title">Vertical acceleration, tanker pass</span><span class="console-tag">Illustrative</span></div>
@@ -549,6 +658,14 @@
                 <label><input type="checkbox" data-layer="cad" checked /><span>Facility 3D massing</span></label>
                 <label><input type="checkbox" data-layer="assets" checked /><span>LuminaBox tracking</span></label>
               </div>
+
+              <h3 class="side-title">Connectivity</h3>
+              <div class="seg seg4" id="link-filter" role="group" aria-label="Show link type">
+                <button type="button" class="is-on" data-lf="all" aria-pressed="true">All</button>
+                <button type="button" data-lf="rf" aria-pressed="false" title="Base-station RF links">RF</button>
+                <button type="button" data-lf="cell" aria-pressed="false" title="Cellular links">Cell</button>
+                <button type="button" data-lf="sat" aria-pressed="false" title="Satellite (SATCOM) links">SAT</button>
+              </div>
             </div>
 
             <div class="twin-stage">
@@ -563,6 +680,7 @@
                 <button class="stab" role="tab" aria-selected="false" data-scn="shipping" type="button">Shipping to Cape</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
               </div>
+              <div class="tech-chips" id="tech-chips"></div>
               <div class="cesium-wrap">
                 <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
                   <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
@@ -579,7 +697,8 @@
                     <div class="lb-sub" id="lb-sub">Tracking 1 TEU</div>
                     <ul class="lb-legend" aria-label="Map legend">
                       <li><i class="lg lg-asset"></i>TEU tracked by a LuminaBox</li>
-                      <li><i class="lg lg-link"></i>RF / cellular uplink</li>
+                      <li><i class="lg lg-link"></i>Base-station RF link</li>
+                      <li><i class="lg lg-cell"></i>Cellular (LTE / 5G) link</li>
                       <li><i class="lg lg-sat"></i>SATCOM link via satellite</li>
                       <li><i class="lg lg-bs"></i>Base station</li>
                     </ul>

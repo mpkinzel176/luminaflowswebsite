@@ -81,8 +81,13 @@
     };
 
     /* ---------- shared builders ---------- */
-    function baseStation(scn, lat, lon, name, cond) {
+    let linkFilter = "all";
+    const lk = (t) => () => linkFilter === "all" || linkFilter === t;
+    const CELLC = GRN;
+    const DGRN = css("#235c3a");
+    function baseStation(scn, lat, lon, name, cond, ringM) {
       const top = cart(lat, lon, 32);
+      if (ringM) add(scn, { position: cart(lat, lon, 0), ellipse: { semiMajorAxis: ringM, semiMinorAxis: ringM, height: 0.3, material: SKY.withAlpha(0.08) } }, cond);
       add(scn, { position: cart(lat, lon, 16), cylinder: { length: 32, topRadius: 0.5, bottomRadius: 1.3, material: css("#9fb6c8") } }, cond);
       add(
         scn,
@@ -107,8 +112,40 @@
       return top;
     }
 
-    function uplink(scn, aFn, bFn, cond) {
-      add(scn, { polyline: { positions: CP(() => [aFn(), bFn()]), width: 2, material: new C.PolylineDashMaterialProperty({ color: SKY, dashLength: 14 }) } }, cond);
+    function cellTower(scn, lat, lon, name, rangeM, cond) {
+      const top = cart(lat, lon, 36);
+      add(scn, { position: cart(lat, lon, 18), cylinder: { length: 36, topRadius: 0.5, bottomRadius: 1.5, material: css("#8fc7a5") } }, cond);
+      if (rangeM) add(scn, { position: cart(lat, lon, 0), ellipse: { semiMajorAxis: rangeM, semiMinorAxis: rangeM, height: 0.3, material: CELLC.withAlpha(0.08) } }, cond);
+      add(
+        scn,
+        {
+          position: top,
+          point: { pixelSize: 10, color: CP(() => (Math.floor(T * 1.5) % 2 ? CELLC : DGRN)), outlineColor: WHITE, outlineWidth: 1, disableDepthTestDistance: INF },
+          label: {
+            text: name,
+            font: MONO,
+            fillColor: WHITE,
+            outlineColor: DARK,
+            outlineWidth: 4,
+            style: C.LabelStyle.FILL_AND_OUTLINE,
+            pixelOffset: new C.Cartesian2(0, -14),
+            verticalOrigin: C.VerticalOrigin.BOTTOM,
+            distanceDisplayCondition: new C.DistanceDisplayCondition(0, 30000),
+            disableDepthTestDistance: INF,
+          },
+        },
+        cond
+      );
+      return top;
+    }
+
+    // Typed link line with data packets: type is "rf" (base station), "cell" (cellular) or "sat".
+    function uplink(scn, aFn, bFn, cond, o) {
+      o = o || {};
+      const type = o.type || "rf";
+      const col = o.color || SKY;
+      const c2 = () => (!cond || cond()) && lk(type)();
+      add(scn, { polyline: { positions: CP(() => [aFn(), bFn()]), width: 2, material: new C.PolylineDashMaterialProperty({ color: col, dashLength: 14 }) } }, c2);
       [0, 0.5].forEach((k) =>
         add(
           scn,
@@ -116,7 +153,7 @@
             position: CP(() => lin(aFn(), bFn(), (T / 1.4 + k) % 1)),
             point: { pixelSize: 5, color: WHITE, disableDepthTestDistance: INF },
           },
-          cond
+          c2
         )
       );
     }
@@ -512,7 +549,37 @@
         disableDepthTestDistance: INF,
       },
     }, () => visT(trucks[road.sel])());
-    uplink("road", () => (visT(trucks[road.sel])() ? trucks[road.sel].pTop : upBy(crawler.bay, 22)), bs1f, () => active === "road" && (visT(trucks[road.sel])() || crawler.active));
+    const CELL_LL = [28.56228, -80.66941]; // real KSC communication tower (OpenStreetMap)
+    const cellRoad = cellTower("road", CELL_LL[0], CELL_LL[1], "Cell tower \u00B7 KSC comms tower", 3500);
+    const padAp = offsetLL(SITES.lc39a.lat, SITES.lc39a.lon, -380, -260);
+    const bsAr = baseStation("road", padAp[0], padAp[1], "BS-A \u00B7 LC-39A", null, 600);
+    const roadAsset = () => {
+      const t = trucks[road.sel];
+      if (t.state === "drive" || t.state === "return" || t.state === "wait" || t.state === "home") return t.pTop;
+      return crawler.active ? upBy(crawler.bay, 22) : upBy(cart(KS.vab.center[0], KS.vab.center[1], 0), 30);
+    };
+    const LNAME = { rf: "RF base station", cell: "cellular", sat: "SATCOM" };
+    road.link = { type: "rf", tgt: bs1f, text: "RF \u00B7 BS-1" };
+    let roadSat = null; // created after the satellite block
+    function roadLinkUpdate() {
+      const p = roadAsset();
+      const d1 = C.Cartesian3.distance(p, bs1);
+      const dA = C.Cartesian3.distance(p, bsAr);
+      const dC = C.Cartesian3.distance(p, cellRoad);
+      let L;
+      if (d1 < 600) L = { type: "rf", tgt: bs1f, text: "RF \u00B7 BS-1 \u00B7 " + (d1 / 1000).toFixed(1) + " km" };
+      else if (dA < 600) L = { type: "rf", tgt: () => bsAr, text: "RF \u00B7 BS-A \u00B7 " + (dA / 1000).toFixed(1) + " km" };
+      else if (dC < 3500) L = { type: "cell", tgt: () => cellRoad, text: "Cellular LTE \u00B7 tower " + (dC / 1000).toFixed(1) + " km" };
+      else L = { type: "sat", tgt: null, text: "SATCOM" };
+      if (L.type !== road.link.type) log("road", trucks[road.sel].id + ": " + LNAME[road.link.type] + " \u2192 " + LNAME[L.type]);
+      if (L.type === "sat" && roadSat) {
+        roadSat.eval();
+        L.text = roadSat.ok ? "SATCOM \u00B7 SAT-" + (roadSat.a + 1) + " \u00B7 " + roadSat.el.toFixed(0) + "\u00B0 el" : "SATCOM \u00B7 searching";
+      }
+      road.link = L;
+    }
+    uplink("road", roadAsset, () => road.link.tgt(), () => active === "road" && road.link.type === "rf" && !!road.link.tgt, { type: "rf" });
+    uplink("road", roadAsset, () => cellRoad, () => active === "road" && road.link.type === "cell", { type: "cell", color: CELLC });
 
     // damaged-road markers (detected from TEU shock readings)
     DMG.forEach((p) => {
@@ -796,6 +863,7 @@
         road.hdg = st.brg;
         road.range = st.state === "integrated" ? 500 : 75;
       }
+      roadLinkUpdate();
       const chip = "Time-lapse ×" + sim.tlx + " · real OSM roads · simulated";
       if (active === "road" && chip !== road.chip) {
         road.chip = chip;
@@ -829,7 +897,7 @@
         kv("Vibration", t.vib.toFixed(2) + " g rms") +
         kv("Temp", t.temp.toFixed(1) + " °C") +
         kv("Humidity", t.rh.toFixed(0) + " %RH") +
-        kv("Link", "BS-1 · LCC") +
+        kv("Link", road.link.text) +
         "</div>" +
         hcBlock("Vertical acceleration · " + t.id, rollChart(t.id, "az", { yr: [0, 5.5], yfmt: (v) => v.toFixed(0), color: "#41b7e3", kind: "dmg", thresholds: [{ y: 2.2, color: "#ffb347", label: "damage threshold 2.2 g" }], aria: "Vertical acceleration history with detected road-damage hits" })) +
         hcBlock("Temperature · " + t.id + " (°C)", rollChart(t.id, "temp", { yr: [18, 34], yfmt: (v) => v.toFixed(0), color: "#ffb347", kind: "none", aria: "Container temperature history" })) +
@@ -883,7 +951,20 @@
     });
     const bsWp = obbLL(WH.L / 2 + 22, WH.W / 2 + 8);
     const bsW = baseStation("warehouse", bsWp[0], bsWp[1], "BS-W · Base station");
-    uplink("warehouse", () => cart(WH.lat, WH.lon, 16), () => bsW);
+    const whLinkType = () => {
+      const c = T % 36;
+      return c < 22 ? "rf" : c < 28 ? "cell" : c < 32 ? "sat" : "rf";
+    };
+    const cellWh = cellTower("warehouse", CELL_LL[0], CELL_LL[1], "Cell tower \u00B7 KSC comms tower", 3500);
+    const whRoof = () => cart(WH.lat, WH.lon, 16);
+    uplink("warehouse", whRoof, () => bsW, () => active === "warehouse" && whLinkType() === "rf", { type: "rf" });
+    uplink("warehouse", whRoof, () => cellWh, () => active === "warehouse" && whLinkType() === "cell", { type: "cell", color: CELLC });
+    let whSat = null; // created after the satellite block
+    let whLastLink = "rf";
+    const whLinkText = () => {
+      const t = whLinkType();
+      return t === "rf" ? "RF \u00B7 BS-W gateway" : t === "cell" ? "Cellular LTE \u00B7 failover test" : whSat && whSat.ok ? "SATCOM \u00B7 SAT-" + (whSat.a + 1) + " \u00B7 failover test" : "SATCOM \u00B7 failover test";
+    };
 
     const CONTENTS = ["Avionics racks", "Payload adapters", "Ground support eq.", "Optical instruments", "Spares pallets", "Fairing hardware", "Test fixtures", "Cabling & harness"];
     const whBox = [];
@@ -961,6 +1042,12 @@
     let whSamp = 0;
     let lastTransferPhase = "";
     function tickWarehouse() {
+      const lt = whLinkType();
+      if (lt === "sat" && whSat) whSat.eval();
+      if (lt !== whLastLink) {
+        log("warehouse", "Gateway link failover test: " + LNAME[whLastLink] + " \u2192 " + LNAME[lt]);
+        whLastLink = lt;
+      }
       const c = T % 40;
       let f = 0;
       let phase = "hold";
@@ -1030,7 +1117,7 @@
           kv("Location", s.tier ? "Bay tier 2" : s.dynamic && s.north > 40 ? "Outbound dock" : "Bay tier 1") +
           kv("Temp", f1(s.temp) + " °C", s.status === "temp" ? "alert" : "") +
           kv("Humidity", s.rh.toFixed(0) + " %RH") +
-          kv("Link", "BS-W · gateway") +
+          kv("Link", whLinkText()) +
           "</div>" +
           hcBlock("Temperature · " + s.id + " (°C)", rollChart(s.id, "temp", { yr: [16, 38], yfmt: (v) => v.toFixed(0), color: "#ffb347", kind: "temp", thresholds: [{ y: 30, color: "#ff6b5b", label: "excursion 30 °C" }], aria: "Container temperature history" })) +
           hcBlock("Vertical acceleration · " + s.id + " (g)", rollChart(s.id, "az", { yr: [0.8, 4.2], yfmt: (v) => v.toFixed(1), color: "#41b7e3", kind: "shock", aria: "Handling shock history" }))
@@ -1144,7 +1231,7 @@
         }
         return st;
       };
-      const show = () => activeFn() && st.ok;
+      const show = () => activeFn() && st.ok && lk("sat")();
       add(scn, { polyline: { positions: CP(() => [assetFn(), sp(st.a)]), width: 2, material: new C.PolylineDashMaterialProperty({ color: VIOLET, dashLength: 16 }) } }, show);
       add(scn, { polyline: { positions: CP(() => [sp(st.a), sp(st.b)]), width: 2, material: new C.PolylineDashMaterialProperty({ color: VIOLET.withAlpha(0.7), dashLength: 10 }) } }, () => show() && st.b !== st.a);
       add(scn, { polyline: { positions: CP(() => [sp(st.b), gwFns[st.gw]()]), width: 2, material: new C.PolylineDashMaterialProperty({ color: VIOLET, dashLength: 16 }) } }, show);
@@ -1354,11 +1441,15 @@
     const bsJ = baseStation("launch", bsJp[0], bsJp[1], "BS-J · Japan");
     uplink("launch", () => veh.pos, () => bsPad, () => veh.u < 0.12);
     uplink("launch", () => veh.pos, () => bsJ, () => veh.u > 0.86);
+    const cellJp = cellTower("launch", JP.lat + 0.0007, JP.lon - 0.0013, "Cell tower \u00B7 Japan site", 900);
+    uplink("launch", () => veh.pos, () => cellJp, () => veh.u > 0.88, { type: "cell", color: CELLC });
     // SATCOM: LuminaBox falls back to the relay constellation from liftoff; re-entry plasma blackout interrupts it
     const launchSatOn = () => active === "launch" && ((veh.u >= 0.1 && veh.u < 0.745) || veh.u >= 0.79);
     const launchSat = satLink("launch", () => veh.pos, [() => bsPad, () => bsJ], launchSatOn, (a, b) => log("launch", "SATCOM handover SAT-" + (a + 1) + " \u2192 SAT-" + (b + 1)));
     const blackout = () => veh.u >= 0.745 && veh.u < 0.79;
     let wasBlackout = false;
+    roadSat = satLink("road", roadAsset, [() => bs1, () => bsAr], () => active === "road" && road.link.type === "sat", (a, b) => log("road", "SATCOM handover SAT-" + (a + 1) + " \u2192 SAT-" + (b + 1)));
+    whSat = satLink("warehouse", whRoof, [() => bsW], () => active === "warehouse" && whLinkType() === "sat");
     function launchLinkShort() {
       return veh.u < 0.1 ? "RF" : blackout() ? "BLACKOUT" : "SATCOM";
     }
@@ -1375,7 +1466,7 @@
       else if (bl) veh.link = "BLACKOUT \u00B7 buffering";
       else {
         const s = launchSat.ok ? "SATCOM \u00B7 SAT-" + (launchSat.a + 1) : "SATCOM";
-        veh.link = veh.u >= 0.86 ? s + " + BS-J (RF)" : s;
+        veh.link = veh.u >= 0.88 ? s + " + BS-J RF + cell" : veh.u >= 0.86 ? s + " + BS-J RF" : s;
       }
     }
     // Japan landing zone
@@ -1589,17 +1680,31 @@
     }
     const lay = (b, fwd, side, up) => madd(madd(madd(b.pos, b.fwd, fwd), b.side, side), b.up, up);
 
+    const TW = ROUTES[2].pts.map(([la, lo]) => cart(la, lo, 0));
+    TW.forEach((p) => {
+      add("shipping", { position: p, ellipse: { semiMajorAxis: 55000, semiMinorAxis: 55000, height: 0, material: CELLC.withAlpha(0.1) } });
+      add("shipping", { position: p, point: { pixelSize: 6, color: CELLC, outlineColor: WHITE, outlineWidth: 1, distanceDisplayCondition: new C.DistanceDisplayCondition(0, 1.2e7) } });
+    });
     function routeLink(r) {
       if (r.mode === "ship") {
         if (r.f < 0.035) return { k: "rf", text: "RF · " + r.mast, mast: r.mast };
         if (r.f > 0.965) return { k: "rf", text: "RF · BS-P", mast: "BS-P" };
         return { k: "sat" };
       }
-      if ((r.f > 0.33 && r.f < 0.44) || (r.f > 0.62 && r.f < 0.7)) return { k: "sat" };
-      if (r.f > 0.97) return { k: "rf", text: "RF · BS-P", mast: "BS-P" };
-      return { k: "lte", text: "Cellular LTE" };
+      if (r.f > 0.97) return { k: "rf", text: "RF \u00B7 BS-P", mast: "BS-P" };
+      let bd = 1e12;
+      let bi = 0;
+      TW.forEach((p, i) => {
+        const d = C.Cartesian3.distance(p, r.b[0].pos);
+        if (d < bd) {
+          bd = d;
+          bi = i;
+        }
+      });
+      if (bd < 55000) return { k: "lte", text: "Cellular LTE \u00B7 tower " + Math.round(bd / 1000) + " km", tw: bi };
+      return { k: "sat" };
     }
-    const LINK_COL = { sat: VIOLET, rf: SKY, lte: SKY };
+    const LINK_COL = { sat: VIOLET, rf: SKY, lte: CELLC };
 
     function tickShipping0() {
       ROUTES.forEach((r) => {
@@ -1654,6 +1759,7 @@
         },
       });
       r.sat = satLink("shipping", () => r.top, [() => mastP], () => active === "shipping" && r.link.k === "sat", (a, b) => log("shipping", r.name + ": SATCOM handover SAT-" + (a + 1) + " → SAT-" + (b + 1)));
+      if (r.mode === "truck") uplink("shipping", () => r.top, () => upBy(TW[r.link.tw || 0], 30), () => active === "shipping" && r.link.k === "lte", { type: "cell", color: CELLC });
       // RF link to the nearest port mast while in port range
       uplink("shipping", () => r.top, () => MASTS[r.link.mast || "BS-P"], () => active === "shipping" && r.link.k === "rf" && !!r.link.mast);
       // fleet indicator + label
@@ -1708,7 +1814,7 @@
     }
     tickShipping();
 
-    const linkBadge = (r) => (r.link.k === "sat" ? "sat" : "ok");
+    const linkBadge = (r) => (r.link.k === "sat" ? "sat" : r.link.k === "lte" ? "cell" : "ok");
     const linkLabel = (r) => (r.link.k === "sat" ? "SATCOM" : r.link.k === "lte" ? "LTE" : "RF");
     const hm = (h) => Math.floor(h) + "h " + String(Math.round((h % 1) * 60)).padStart(2, "0") + "m";
     function feedShipping() {
@@ -1791,6 +1897,7 @@
       cam.zoom = 1;
       active = id;
       window.dispatchEvent(new CustomEvent("twin:scenario", { detail: id }));
+      if (typeof renderTech === "function") renderTech(id);
       tabs.forEach((t) => {
         const on = t.dataset.scn === id;
         t.classList.toggle("is-active", on);
@@ -1930,6 +2037,47 @@
         $("#mission-t").value = Math.round(f * 1000);
       }
     });
+    const lf = $("#link-filter");
+    function setLinkFilter(v) {
+      linkFilter = v;
+      if (lf)
+        lf.querySelectorAll("button").forEach((b) => {
+          const on = b.dataset.lf === v;
+          b.classList.toggle("is-on", on);
+          b.setAttribute("aria-pressed", String(on));
+        });
+      applyVisibility();
+    }
+    if (lf)
+      lf.addEventListener("click", (ev) => {
+        const b = ev.target.closest("[data-lf]");
+        if (b) setLinkFilter(b.dataset.lf);
+      });
+    const TECH = {
+      road: [["LuminaBox sensing", "#luminabox"], ["Road health", "#roadhealth"], ["Digital thread", "#digital-thread"], ["Planning", "#platform"], ["Connectivity", "#arch"]],
+      warehouse: [["LuminaBox sensing", "#luminabox"], ["Digital thread", "#digital-thread"], ["Connectivity", "#arch"]],
+      shipping: [["Logistics", "#logistics"], ["Connectivity", "#arch"], ["Digital thread", "#digital-thread"]],
+      launch: [["Real-time CFD", "#cfd"], ["Connectivity", "#arch"], ["Digital thread", "#digital-thread"]],
+    };
+    function renderTech(id) {
+      const el = $("#tech-chips");
+      if (!el) return;
+      el.innerHTML = '<span class="tabs-label">Technologies in this view</span>' + TECH[id].map(([t, h]) => '<a class="tchip" href="' + h + '">' + t + "</a>").join("");
+    }
+    function twinGo(p) {
+      if (p.res === "fine" && !p.scn && active !== "road" && active !== "warehouse") p.scn = "road";
+      if (p.scn) setScenario(p.scn);
+      if (p.site) {
+        const b = document.querySelector('.fac[data-site="' + p.site + '"]');
+        if (b) b.click();
+      }
+      if (p.res) {
+        const b = document.querySelector('#res-mode [data-res="' + p.res + '"]');
+        if (b) b.click();
+      }
+      if (p.link) setLinkFilter(p.link);
+    }
+    window.twinGo = twinGo;
     const assetCb = document.querySelector('[data-layer="assets"]');
     assetCb.addEventListener("change", () => {
       assetsOn = assetCb.checked;
@@ -1954,7 +2102,7 @@
         const b = r.b[0];
         viewer.camera.lookAt(b.pos, new C.HeadingPitchRange(C.Math.toRadians(b.brg + 160), C.Math.toRadians(-26), (r.mode === "ship" ? 380 : 75) * cam.zoom));
       }
-      if (active === "launch" || active === "shipping") updateSats();
+      updateSats();
       if (active === "road" && cam.roadFollow) {
         viewer.camera.lookAt(
           road.focus,
@@ -1981,6 +2129,11 @@
     }, 250);
 
     overlay.hidden = false;
+    if (window.__twinPending) {
+      const pp = window.__twinPending;
+      window.__twinPending = null;
+      setTimeout(() => twinGo(pp), 600);
+    }
     setScenario("road", { force: true, noFly: true });
     log("road", "10 LuminaBoxes online \u00B7 link established with BS-1 (LCC)");
     log("warehouse", "Gateway BS-W online · " + whBox.length + " LuminaBoxes joined");

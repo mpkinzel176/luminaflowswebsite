@@ -120,3 +120,129 @@
   }, { threshold: 0.35 }).observe(v);
   sync();
 })();
+
+/* ---------- Architecture: connectivity paths (auto failover demo) ---------- */
+(function () {
+  const svg = document.querySelector("#arch-svg");
+  if (!svg) return;
+  const tabs = document.querySelectorAll(".at");
+  const out = document.querySelector("#arch-now-text");
+  const NAMES = {
+    rf: "Base station (site RF): lowest latency in range, used at warehouses, pads and ports",
+    cell: "Cell network (LTE / 5G): public coverage along roads and around cities",
+    sat: "Satellite relay (SATCOM): global coverage at sea, in remote areas and during launch",
+  };
+  const ORDER = ["rf", "cell", "sat"];
+  let mode = "auto";
+  let idx = 0;
+  let timer = null;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function show(path) {
+    svg.dataset.active = path;
+    out.textContent = (mode === "auto" ? "Auto failover → " : "") + NAMES[path];
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+  }
+  function select(m) {
+    mode = m;
+    tabs.forEach((t) => t.classList.toggle("is-on", t.dataset.path === m));
+    stop();
+    if (m === "auto") {
+      idx = 0;
+      show(ORDER[0]);
+      if (!reduced)
+        timer = setInterval(() => {
+          idx = (idx + 1) % ORDER.length;
+          show(ORDER[idx]);
+        }, 3600);
+    } else show(m);
+  }
+  tabs.forEach((t) => t.addEventListener("click", () => select(t.dataset.path)));
+  svg.querySelectorAll(".lnode").forEach((n) => {
+    const m = n.classList.contains("lnode-rf") ? "rf" : n.classList.contains("lnode-cell") ? "cell" : "sat";
+    n.addEventListener("mouseenter", () => {
+      if (mode === "auto") {
+        stop();
+        show(m);
+      }
+    });
+    n.addEventListener("mouseleave", () => {
+      if (mode === "auto") select("auto");
+    });
+  });
+  select("auto");
+})();
+
+/* ---------- Adaptive work tasking explainer ---------- */
+(function () {
+  const body = document.querySelector("#task-body");
+  if (!body) return;
+  const result = document.querySelector("#task-result");
+  const CREW = [
+    { who: "John", clear: { t: "Move active payload to launch pad", w: "Pad", out: true }, storm: { t: "Move stored pending payload to testing area", w: "Hangar", out: false, why: "Lightning within 5 nm: pad work on hold. Payload move rescheduled to 15:30." } },
+    { who: "Jane", clear: { t: "Environmental inspection around launch pad", w: "Pad perimeter", out: true }, storm: { t: "Finish report for previous inspection", w: "Office", out: false, why: "Outdoor inspection paused. Report work keeps the day productive." } },
+    { who: "Ana", clear: { t: "Fuel-line walkdown at the pad", w: "Pad", out: true }, storm: { t: "Review procedure checklist with the team", w: "Control room", out: false, why: "Fuel work near lightning is not permitted." } },
+    { who: "Raj", clear: { t: "Check crane and ground equipment", w: "Pad", out: true }, storm: { t: "Calibrate sensors and LuminaBox units", w: "Lab", out: false, why: "Indoor task that needs doing anyway." } },
+  ];
+  let mode = "clear";
+  function chip(cls, txt) {
+    return '<span class="st-chip ' + cls + '">' + txt + "</span>";
+  }
+  function render(changed) {
+    body.innerHTML = CREW.map((c) => {
+      const s = c[mode];
+      const old = c.clear;
+      return (
+        "<tr" + (changed ? ' class="changed"' : "") + "><td>" + c.who + "</td><td>" +
+        (mode === "storm" ? '<span class="t-old">' + old.t + "</span>" : "") +
+        s.t +
+        (mode === "storm" ? '<span class="t-why">' + s.why + "</span>" : "") +
+        '</td><td><span class="where ' + (s.out ? "out" : "in") + '">' + (s.out ? "OUTDOORS" : "INDOORS") + "</span> " + s.w + "</td><td>" +
+        (mode === "storm" ? chip("moved", "REASSIGNED") : chip("ok", "ON SCHEDULE")) + "</td></tr>"
+      );
+    }).join("");
+    result.className = "task-result" + (mode === "storm" ? " storm" : "");
+    result.innerHTML =
+      mode === "storm"
+        ? "<b>Result:</b> 4 of 4 crew stay productive, 0 idle hours, 0 people outdoors during the lightning window. Pad work resumes after it clears."
+        : "<b>Result:</b> 4 of 4 tasks on schedule. No weather impact in the forecast, so no changes are needed.";
+  }
+  document.querySelectorAll(".task-control [data-fc]").forEach((b) =>
+    b.addEventListener("click", () => {
+      mode = b.dataset.fc;
+      document.querySelectorAll(".task-control [data-fc]").forEach((x) => x.classList.toggle("is-on", x === b));
+      render(true);
+    })
+  );
+  render(false);
+})();
+
+/* ---------- Links from page technologies into the 3D model ---------- */
+(function () {
+  function go(btn) {
+    let p;
+    try {
+      p = JSON.parse(btn.getAttribute("data-go"));
+    } catch (e) {
+      return;
+    }
+    const target = document.querySelector("#twin-ui");
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (typeof window.twinGo === "function") window.twinGo(p);
+    else window.__twinPending = p; // applied when the 3D map finishes loading
+  }
+  document.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-go]");
+    if (b) go(b);
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    const b = ev.target.closest && ev.target.closest("[data-go][role='button']");
+    if (b) {
+      ev.preventDefault();
+      go(b);
+    }
+  });
+})();
