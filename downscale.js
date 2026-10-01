@@ -389,6 +389,17 @@
       }
     });
 
+    const dsMin = $("#ds-min");
+    if (dsMin) {
+      const set = (on) => {
+        overlay.classList.toggle("is-min", on);
+        dsMin.setAttribute("aria-expanded", String(!on));
+        dsMin.textContent = on ? "+" : "−";
+        dsMin.title = on ? "Expand" : "Minimize";
+      };
+      dsMin.addEventListener("click", () => set(!overlay.classList.contains("is-min")));
+      if (window.matchMedia("(max-width: 760px)").matches) set(true);
+    }
     apply();
   }
 })();

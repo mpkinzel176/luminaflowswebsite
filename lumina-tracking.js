@@ -2062,7 +2062,7 @@
     function renderTech(id) {
       const el = $("#tech-chips");
       if (!el) return;
-      el.innerHTML = '<span class="tabs-label">Technologies in this view</span>' + TECH[id].map(([t, h]) => '<a class="tchip" href="' + h + '">' + t + "</a>").join("");
+      el.innerHTML = '<span class="tabs-label">Technologies in this view</span>' + TECH[id].map(([t, h]) => '<a class="tchip" href="index.html' + h + '" target="_top">' + t + "</a>").join("");
     }
     function twinGo(p) {
       if (p.res === "fine" && !p.scn && active !== "road" && active !== "warehouse") p.scn = "road";
@@ -2076,8 +2076,41 @@
         if (b) b.click();
       }
       if (p.link) setLinkFilter(p.link);
+      const fire = (sel, v) => {
+        const e = document.querySelector(sel);
+        if (e && v != null) {
+          e.value = v;
+          e.dispatchEvent(new Event("input"));
+        }
+      };
+      if (p.spd != null) {
+        fire("#wi-spd", p.spd);
+        if (p.dir != null) fire("#wi-dir", p.dir);
+      }
+      if (p.hour != null) fire("#hour", p.hour);
     }
     window.twinGo = twinGo;
+    window.twinState = () => {
+      const val = (sel, d) => {
+        const e = document.querySelector(sel);
+        return e ? parseInt(e.value, 10) || d : d;
+      };
+      const res = document.querySelector("#res-mode .is-on");
+      return { scn: active, site: api.getSelected(), res: res ? res.dataset.res : "coarse", link: linkFilter, spd: val("#wi-spd", 0), dir: val("#wi-dir", 90), hour: val("#hour", 0) };
+    };
+    // minimize the tracking card so it never hides the map (starts minimized on phones)
+    const lbMin = $("#lb-min");
+    const lbCard = document.querySelector(".lb-card");
+    function setMin(card, btn, on) {
+      card.classList.toggle("is-min", on);
+      btn.setAttribute("aria-expanded", String(!on));
+      btn.textContent = on ? "+" : "−";
+      btn.title = btn.ariaLabel = on ? "Expand" : "Minimize";
+    }
+    if (lbMin && lbCard) {
+      lbMin.addEventListener("click", () => setMin(lbCard, lbMin, !lbCard.classList.contains("is-min")));
+      if (window.matchMedia("(max-width: 760px)").matches) setMin(lbCard, lbMin, true);
+    }
     const assetCb = document.querySelector('[data-layer="assets"]');
     assetCb.addEventListener("change", () => {
       assetsOn = assetCb.checked;

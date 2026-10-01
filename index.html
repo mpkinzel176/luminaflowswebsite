@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lumina Flows | Digital Engineering for Mission Systems</title>
+    <title>Lumina Flows | Simulation and digital twins for launch sites, logistics and defense</title>
     <meta
       name="description"
-      content="Lumina Flows connects digital thread engineering, GPU-accelerated real-time CFD, logistics integration with LuminaBox, and counter-UAS decision support for defense and space operations."
+      content="Lumina Flows is a small U.S. engineering company. We combine high-resolution weather, GPU fluid simulation and low-cost sensors into digital twins for launch sites, shipping and defense programs."
     />
-    <meta property="og:title" content="Lumina Flows | Digital Engineering for Mission Systems" />
+    <meta property="og:title" content="Lumina Flows | Know what the weather will do to your site" />
     <meta
       property="og:description"
-      content="Digital thread, real-time CFD, logistics integration, and counter-UAS decision support, supported by ONR, the U.S. Navy, and AFRL."
+      content="Digital twins, GPU fluid simulation and LuminaBox sensors for launch sites, shipping and defense programs."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="assets/lumina-flows-logo-cropped.png" />
@@ -34,13 +34,13 @@
           <span></span>
         </button>
         <div class="nav-links" id="nav-links">
-          <a href="#capabilities">Capabilities</a>
-          <a href="#solutions">Solutions</a>
-          <a href="#platform">Platform</a>
-          <a href="#twin">Digital Twin</a>
-          <a href="#partners">Partners</a>
-          <a href="#credibility">Research</a>
-          <a class="nav-cta" href="#contact">Engage</a>
+          <a href="#capabilities">What we do</a>
+          <a href="#solutions">Our products</a>
+          <a href="#platform">How it works</a>
+          <a href="#twin">Try the model</a>
+          <a href="#partners">Who we work with</a>
+          <a href="#about">About</a>
+          <a class="nav-cta" href="#contact">Talk to us</a>
         </div>
       </nav>
     </header>
@@ -48,121 +48,95 @@
     <main id="main">
       <!-- 1. HERO -->
       <section class="hero" id="home" aria-labelledby="hero-title">
-        <div class="grid-bg" aria-hidden="true"></div>
         <div class="hero-inner">
           <div class="hero-copy">
-            <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Digital engineering for mission systems</p>
-            <h1 id="hero-title">One connected model, from physics to the field.</h1>
+            <h1 id="hero-title">Know what the weather will do to your site before it does it.</h1>
             <p class="hero-lede">
-              Lumina Flows links simulation, logistics, sensing, and environmental forecasting into a single digital
-              thread, so defense and space operators can see conditions, test decisions, and adapt in real time.
+              We're a small, U.S.-based engineering company. We take high-resolution weather, fluid simulation and
+              low-cost sensors and turn them into digital twins, so launch sites, shipping teams and defense programs
+              can plan their day around what is actually about to happen.
             </p>
             <div class="hero-actions">
-              <a class="button primary" href="#twin">Explore the digital twin</a>
-              <a class="button secondary" href="#solutions">View solutions</a>
-              <a class="button text" href="#contact">Start a program conversation</a>
+              <a class="button primary" href="#twin">Try the 3D model</a>
+              <a class="button secondary" href="#capabilities">See what we do</a>
+              <a class="button text" href="#contact">Talk to us</a>
             </div>
-            <ul class="funder-strip" aria-label="Research sponsors">
-              <li>Supported by</li>
-              <li>ONR</li>
-              <li>U.S. Navy</li>
-              <li>AFRL</li>
-            </ul>
+            <p class="funder-line">Our research has been supported by the Office of Naval Research, the U.S. Navy and the Air Force Research Laboratory.</p>
           </div>
 
-          <div class="console" aria-label="Illustrative mission dashboard">
-            <div class="console-bar">
-              <span>MISSION AWARENESS</span>
-              <span class="console-tag">Illustrative</span>
+          <figure class="hero-media">
+            <div class="rocket-frame">
+              <video id="hero-video" src="assets/deck/artemis2-cfd.mp4" poster="assets/deck/artemis2-poster.jpg" muted loop playsinline autoplay preload="metadata" aria-label="Simulation of air swirling around a rocket standing on its launch pad"></video>
+              <img class="rocket-logo" src="assets/deck/luminatwin-logo.png" alt="LuminaTwin" />
             </div>
-            <figure class="console-view">
-              <img src="assets/tech/ShipAirwake.png" alt="CFD velocity magnitude contours and vortex structures over a ship deck." />
-              <span class="callout c1">Airwake · velocity magnitude (m/s)</span>
-              <span class="callout c2">Solver · GPU</span>
-            </figure>
-            <dl class="console-stats">
-              <div>
-                <dt>Weather input</dt>
-                <dd>1.8 mi → 1 ft</dd>
-              </div>
-              <div>
-                <dt>Scrub rate (NASA rule of thumb)</dt>
-                <dd>1 in 3</dd>
-              </div>
-              <div>
-                <dt>Launch-delay cost today</dt>
-                <dd>~$20M / yr</dd>
-              </div>
-            </dl>
-          </div>
+            <figcaption>Our simulation of the air swirling around a rocket on the pad, running faster than real time on GPUs.</figcaption>
+          </figure>
         </div>
       </section>
 
-      <!-- 2. CAPABILITY OVERVIEW -->
+      <!-- 2. WHAT WE DO -->
       <section class="section" id="capabilities" aria-labelledby="capabilities-title">
         <div class="section-heading">
-          <p class="eyebrow">Capability overview</p>
-          <h2 id="capabilities-title">Engineering that stays connected after the design review.</h2>
+          <h2 id="capabilities-title">What we actually do</h2>
           <p>
-            Our work spans the full chain from first-principles simulation to fielded sensing and decision support. Each
-            capability feeds the same data model.
+            Our work falls into six areas. They have one thing in common: we connect the physics to the people who have
+            to make a call, whether that is a launch director, a logistics manager or a program lead.
           </p>
         </div>
-        <div class="cap-grid">
-          <a class="cap-card" href="#digital-thread">
-            <span class="cap-id">01</span>
-            <h3>Digital Thread</h3>
-            <p>Traceable data linking design, manufacturing, logistics, and operations.</p>
-          </a>
-          <a class="cap-card" href="#cfd">
-            <span class="cap-id">02</span>
-            <h3>Real-Time CFD</h3>
-            <p>GPU-accelerated flow simulation for fast, high-fidelity decision support.</p>
-          </a>
-          <a class="cap-card" href="#logistics">
-            <span class="cap-id">03</span>
-            <h3>Logistics Integration</h3>
-            <p>Modeling connected to LuminaBox for asset flow, health, and readiness.</p>
-          </a>
-          <a class="cap-card" href="#cuas">
-            <span class="cap-id">04</span>
+        <ul class="what-list">
+          <li>
+            <h3>Digital thread</h3>
+            <p>One traceable record that runs from the first CAD model to the hardware on the pad, so anyone can ask where a number came from.</p>
+            <a class="more" href="#digital-thread">Read more</a>
+          </li>
+          <li>
+            <h3>Real-time CFD</h3>
+            <p>Fluid simulation on GPUs, fast enough to use while the decision is still open.</p>
+            <a class="more" href="#cfd">Read more</a>
+          </li>
+          <li>
+            <h3>LuminaBox tracking</h3>
+            <p>Small sensors that ride on containers, tankers and vehicles and report where they are and what they have been through.</p>
+            <a class="more" href="#logistics">Read more</a>
+          </li>
+          <li>
             <h3>Counter-UAS</h3>
-            <p>Layered sensing and response with real-time mission awareness.</p>
-          </a>
-          <a class="cap-card" href="#twin">
-            <span class="cap-id">05</span>
-            <h3>Environmental Digital Twin</h3>
-            <p>High-resolution weather projected onto facility CAD and operations.</p>
-          </a>
-          <a class="cap-card" href="#partners">
-            <span class="cap-id">06</span>
-            <h3>Consulting &amp; Programs</h3>
-            <p>Embedded engineering support for defense and mission technology teams.</p>
-          </a>
-        </div>
+            <p>Putting several sensors together into one picture of what is in the air, and accounting for how wind and nearby buildings affect it.</p>
+            <a class="more" href="#cuas">Read more</a>
+          </li>
+          <li>
+            <h3>Weather digital twin</h3>
+            <p>Forecasts refined down to the scale of a building and shown on a 3D model of the site.</p>
+            <a class="more" href="#twin">Try it</a>
+          </li>
+          <li>
+            <h3>Consulting</h3>
+            <p>Engineers who embed with defense and space teams and work on their problem alongside them.</p>
+            <a class="more" href="#partners">Who we work with</a>
+          </li>
+        </ul>
       </section>
 
       <!-- 3. SOLUTIONS -->
       <section class="section solutions" id="solutions" aria-labelledby="solutions-title">
         <div class="section-heading">
-          <p class="eyebrow">Products &amp; solutions</p>
-          <h2 id="solutions-title">Five mission capabilities, one architecture.</h2>
+          <h2 id="solutions-title">The pieces, one at a time</h2>
+          <p>Here is how each part works and what it is for.</p>
         </div>
 
         <article class="solution" id="digital-thread">
           <div class="solution-copy">
-            <p class="solution-tag">Digital Thread</p>
-            <h3>Continuous, traceable data from design to decision.</h3>
+            <h3>Every number should be traceable</h3>
             <p>
-              A digital thread ties geometry, simulation results, manufacturing records, logistics state, and operational
-              telemetry into one lineage. Every decision can be traced to the model and the data behind it, and every
-              model can be updated by what the field observes.
+              A digital thread is a connected record. The CAD model, the simulation that used it, the manufacturing
+              notes, where the part is now and what its sensors have felt are all linked together. When someone asks
+              why a call was made, you can follow the trail back. When the field teaches you something, the model gets
+              updated.
             </p>
-            <ul class="check-list">
-              <li><strong>Traceability:</strong> results tied to versioned geometry, inputs, and solver settings.</li>
-              <li><strong>Interoperability:</strong> open data exchange between CAD, CFD, GIS, and operations tools.</li>
-              <li><strong>Visibility:</strong> one view across engineering, logistics, and command.</li>
-            </ul>
+            <p>
+              We keep the data in open formats so it moves between CAD, CFD, mapping and operations tools without
+              someone retyping it.
+            </p>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual thread" aria-label="Digital thread diagram">
@@ -180,19 +154,16 @@
 
         <article class="solution reverse" id="logistics">
           <div class="solution-copy">
-            <p class="solution-tag">Logistics · Connection of Modern to LuminaBox</p>
-            <h3>A digital logistics layer for readiness and continuity.</h3>
+            <h3>Know where the box is and how it has been treated</h3>
             <p>
-              LuminaBox is an embedded unit that tracks the location and health of whatever it is attached to, such as
-              containers, tankers, and vehicles, and reports to a main station for a real-time feed of the whole site.
-              Connected to logistics and infrastructure models, it turns asset flow into something you can simulate and
-              manage.
+              LuminaBox is a small sensor unit that attaches to a container, a tanker or a vehicle. It records where it
+              is and what it has been through, including shocks, vibration, temperature and humidity, and sends that to
+              a base station. You get a live picture of everything moving around a site.
             </p>
-            <ul class="check-list">
-              <li>Traffic and infrastructure simulation, for example whether dedicated truck lanes or expanded rail get fuel to pads faster.</li>
-              <li>Road-health flagging: a tanker hitting a bump reports it to command for remediation.</li>
-              <li>Dynamic work tasking that re-plans when supply or weather breaks the chain.</li>
-            </ul>
+            <p>
+              Put that next to traffic and infrastructure models and you can test ideas before you pour concrete.
+              Would a dedicated truck lane really get fuel to the pads faster? Would more rail?
+            </p>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"shipping"}'>See it in the model &rarr;</button></p>
           </div>
           <figure class="solution-visual media">
@@ -203,18 +174,12 @@
 
         <article class="solution" id="cfd">
           <div class="solution-copy">
-            <p class="solution-tag">Real-time CFD enabled through GPUs</p>
-            <h3>Flow physics fast enough to inform the decision.</h3>
+            <h3>Fluid simulation that finishes before the decision does</h3>
             <p>
-              GPU acceleration moves computational fluid dynamics from an overnight analysis to a tool used during
-              planning and operations. Faster-than-real-time flow simulation of a vertical Artemis 2 configuration is one
-              example. The same approach supports ship airwake, plume dispersion, and turbulent boundary layers.
+              Running CFD on GPUs turns an overnight job into something you can use during planning, or even live. One
+              example is our faster-than-real-time simulation of the air around a vertical Artemis 2 stack, shown here.
+              We use the same approach for ship airwake, exhaust plumes and the turbulent air close to the ground.
             </p>
-            <ul class="check-list">
-              <li><strong>Speed:</strong> turnaround compatible with operational timelines.</li>
-              <li><strong>Fidelity:</strong> resolved turbulence and geometry, not lookup tables.</li>
-              <li><strong>Decision support:</strong> results delivered in the context of the mission.</li>
-            </ul>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road","res":"fine","site":"vab"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual sim-trio">
@@ -252,18 +217,12 @@
 
         <article class="solution reverse" id="cuas">
           <div class="solution-copy">
-            <p class="solution-tag">Counter-UAS</p>
-            <h3>Layered detection, sensing, and response.</h3>
+            <h3>One picture of what is in the air</h3>
             <p>
-              An integrated approach that fuses sensor inputs into a single operating picture and supports timely
-              response decisions. Environmental modeling adds what most systems lack: how wind, turbulence, and site
-              geometry affect sensing and engagement conditions.
+              Counter-UAS is mostly a sensor-fusion problem. Radar, cameras and radio sensors each see part of the
+              story, and an operator needs one picture. We combine them, and we add something most systems leave out:
+              how wind, turbulence and nearby buildings change what the sensors can see and when a response can work.
             </p>
-            <ul class="check-list">
-              <li>Multi-sensor detection and tracking in one common picture.</li>
-              <li>Layered defense that matches the response to the threat.</li>
-              <li>Real-time decision support for operators and command.</li>
-            </ul>
           </div>
           <div class="solution-visual radar" aria-label="Layered counter-UAS coverage concept">
             <svg viewBox="0 0 400 400" role="img" aria-label="Concentric detection and response layers with a tracked object">
@@ -285,7 +244,7 @@
               <text x="212" y="92" class="lbl">Track</text>
               <text x="212" y="146" class="lbl">Respond</text>
             </svg>
-            <p class="visual-caption">Conceptual layered-defense schematic</p>
+            <p class="visual-caption">A concept sketch of layered coverage, not real data.</p>
           </div>
         </article>
       </section>
@@ -294,30 +253,30 @@
       <!-- PLATFORM: LuminaTwin + LuminaBox (from pitch deck) -->
       <section class="section platform" id="platform" aria-labelledby="platform-title">
         <div class="section-heading">
-          <p class="eyebrow">LuminaTwin · LuminaBox</p>
-          <h2 id="platform-title">Turning spaceports into adaptive systems.</h2>
+          <h2 id="platform-title">Turning a spaceport into something that adapts</h2>
           <p>
-            LuminaTwin is a digital twin that pairs low-cost hardware with advanced simulation software for more
-            informed launch scheduling and adaptive workflows. LuminaBox is the sensing hardware that keeps it tied to
-            the real site.
+            Launches get scrubbed for all kinds of reasons. NASA's rule of thumb is that about one attempt in three
+            doesn't go. LuminaTwin is our answer: a digital twin that combines low-cost hardware with simulation
+            software, so a site can schedule smarter and adjust when something changes. LuminaBox is the hardware that
+            keeps the twin tied to the real site.
           </p>
         </div>
 
         <!-- Problem -->
         <div class="viz-row">
           <figure class="viz-card" aria-labelledby="scrub-cap">
-            <figcaption id="scrub-cap" class="viz-title">The problem: launch scrubs</figcaption>
+            <figcaption id="scrub-cap" class="viz-title">Why it matters: scrubbed launches</figcaption>
             <div class="scrub-icons" role="img" aria-label="Three launch attempts, one of which is scrubbed">
               <svg viewBox="0 0 24 48" class="rk"><path d="M12 2c3 5 4 12 4 20l3 6v8l-4-3h-6l-4 3v-8l3-6c0-8 1-15 4-20z" /></svg>
               <svg viewBox="0 0 24 48" class="rk"><path d="M12 2c3 5 4 12 4 20l3 6v8l-4-3h-6l-4 3v-8l3-6c0-8 1-15 4-20z" /></svg>
               <svg viewBox="0 0 24 48" class="rk scrubbed"><path d="M12 2c3 5 4 12 4 20l3 6v8l-4-3h-6l-4 3v-8l3-6c0-8 1-15 4-20z" /></svg>
             </div>
             <p class="viz-big">1 in 3</p>
-            <p class="viz-note">launch attempts scrubbed, per the current NASA rule of thumb, for a range of causes.</p>
+            <p class="viz-note">of launch attempts get scrubbed, by NASA's current rule of thumb. The causes vary.</p>
           </figure>
 
           <figure class="viz-card" aria-labelledby="cost-cap">
-            <figcaption id="cost-cap" class="viz-title">Annual scrub cost</figcaption>
+            <figcaption id="cost-cap" class="viz-title">What scrubs cost each year</figcaption>
             <div class="bars" role="img" aria-label="Bar chart: about 20 million dollars per year today at Kennedy Space Center and Cape Canaveral Space Force Station, about 100 million dollars per year at the desired joint Air Force and Space Force launch cadence">
               <div class="bar-row">
                 <span class="bar-lbl">Today<small>KSC + CCSFS</small></span>
@@ -330,13 +289,13 @@
                 <span class="bar-val">~$100M</span>
               </div>
             </div>
-            <p class="viz-note">Excludes additional costs from work delays that do not lead to a scrub.</p>
+            <p class="viz-note">Not counting the cost of work delays that never turn into a scrub.</p>
           </figure>
         </div>
 
         <!-- Architecture -->
         <figure class="arch" id="arch" aria-labelledby="arch-cap">
-          <figcaption id="arch-cap" class="viz-title">System architecture · how LuminaBox data reaches LuminaTwin</figcaption>
+          <figcaption id="arch-cap" class="viz-title">How data gets from a container to a decision</figcaption>
           <div class="arch-tabs" role="group" aria-label="Connectivity path">
             <button type="button" class="at is-on" data-path="auto">Auto failover</button>
             <button type="button" class="at at-rf" data-path="rf"><i></i>Base station</button>
@@ -444,23 +403,22 @@
             </svg>
           </div>
           <p class="arch-now" id="arch-now"><b>Active path:</b> <span id="arch-now-text">Base station (site RF)</span></p>
-          <p class="viz-note">The link manager prefers the lowest-latency path in range and fails over without losing data. Select a path above, or click a node to see it in the 3D model.</p>
+          <p class="viz-note">The sensor uses the fastest link it can reach and switches over automatically when that link drops, without losing readings. Pick a path above, or click a box in the diagram to see it in the 3D model.</p>
         </figure>
 
         <!-- Module 1: planning -->
         <article class="solution">
           <div class="solution-copy">
-            <p class="solution-tag">Module 1 · Long-term spaceport planning</p>
-            <h3>Find the bottleneck, then test the fix before building it.</h3>
+            <h3>Find the traffic jam before you pour the concrete</h3>
             <p>
-              The planning tool locates bottlenecks in existing spaceport configurations and simulates proposed
-              infrastructure changes. Optimization, simulation, and AI surrogate models balance upfront cost against
-              launch-cadence gains.
+              The planning module looks at how a site really runs today and where things back up. Then it simulates
+              proposed changes, using optimization, discrete-event simulation and AI surrogate models, to find the fixes
+              that buy the most launches for the least money.
             </p>
             <p class="example">
-              <strong>Example: fuel delivery.</strong> At Cape Canaveral, vehicle traffic can delay fuel trucks, and the
-              problem worsens as cadence rises. Street and rail maps plus traffic and discrete-event simulation
-              identify which projects, such as dedicated truck lanes or expanded rail, pay off.
+              Take fuel deliveries at Cape Canaveral. Traffic can hold up the fuel trucks, and it only gets worse as
+              launches become more frequent. With street and rail maps and a traffic simulation we can compare ideas
+              like dedicated truck lanes or more rail and see which ones are worth it.
             </p>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
           </div>
@@ -480,15 +438,14 @@
         <!-- Module 2 + weather resolution -->
         <article class="solution reverse">
           <div class="solution-copy">
-            <p class="solution-tag">Module 2 · Operational monitoring &amp; adaptation</p>
-            <h3>Weather knowledge at the scale of the work.</h3>
+            <h3>A forecast for the pad, not for the county</h3>
             <p>
-              Faster-than-real-time, high-resolution weather models upsample NOAA forecasts from 1.8 mi to 1 ft
-              resolution. Managers can re-plan daily tasks around unforeseen weather, and the same approach extends to
-              supply-chain disruptions or staffing changes.
+              Public weather models work on cells a couple of miles wide. We refine NOAA forecasts down to about a foot,
+              so you know what the wind is doing at a particular crane or building, faster than real time. Managers use
+              that to re-plan the day. The same idea works for a supply-chain hiccup or someone calling in sick.
             </p>
             <p class="example">
-              A linear resolution gain of roughly <strong>9,500&times;</strong> (1.8 mi is about 9,500 ft).
+              That is roughly <strong>9,500 times</strong> finer in each direction. 1.8 miles is about 9,500 feet.
             </p>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road","res":"fine","site":"vab"}'>See it in the model &rarr;</button></p>
           </div>
@@ -496,36 +453,34 @@
             <div class="res-pair">
               <div>
                 <svg viewBox="0 0 200 200" role="img" aria-label="One coarse forecast grid cell with a single wind vector"><defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="#fff" /></marker></defs><rect x="4" y="4" width="192" height="192" class="coarse" /><line x1="60" y1="130" x2="140" y2="70" class="cv" marker-end="url(#ah2)" /></svg>
-                <span>NOAA model cell<br /><b>1.8 mi</b></span>
+                <span>One NOAA model cell<br /><b>1.8 mi</b></span>
               </div>
               <div class="res-arrow" aria-hidden="true">→</div>
               <div>
                 <svg viewBox="0 0 200 200" id="fine" role="img" aria-label="The same area resolved as a fine grid of varying wind speeds"></svg>
-                <span>Facility-scale field<br /><b>1 ft</b></span>
+                <span>What we resolve<br /><b>1 ft</b></span>
               </div>
             </div>
-            <figcaption id="res-cap">Schematic. Cell counts are not to scale.</figcaption>
+            <figcaption id="res-cap">A sketch. The cell counts are not to scale.</figcaption>
           </figure>
         </article>
 
         <!-- Adaptive work tasking -->
         <div class="tasking" id="tasking" aria-labelledby="task-title">
           <div class="task-head">
-            <p class="solution-tag">Operations module · adaptive work tasking</p>
-            <h3 id="task-title">When the weather changes, the work plan changes with it.</h3>
+            <h3 id="task-title">When the forecast turns, the plan turns with it</h3>
             <p>
-              LuminaTwin watches the high-resolution forecast and checks every scheduled task against it. Tasks that
-              would put people outdoors in unsafe conditions are swapped for useful indoor work, so nobody stands idle
-              and nobody is exposed.
+              LuminaTwin checks every scheduled task against the forecast. If a task would put someone outside in bad
+              weather, it gets swapped for useful indoor work. Nobody is exposed, and nobody stands around waiting.
             </p>
           </div>
           <ol class="task-steps">
-            <li><b>1 · Detect</b><span>The forecast shows lightning within 5 nautical miles of the pad.</span></li>
-            <li><b>2 · Check</b><span>The twin looks at each task: is it outdoors, and how close to the pad?</span></li>
-            <li><b>3 · Reassign</b><span>Exposed tasks move indoors or later. The crew is notified.</span></li>
+            <li><b>1. Spot it</b><span>The forecast shows lightning within 5 nautical miles of the pad.</span></li>
+            <li><b>2. Check the plan</b><span>The twin looks at each task: is it outdoors, and how close to the pad?</span></li>
+            <li><b>3. Move the work</b><span>Exposed tasks move indoors or later, and the crew is told.</span></li>
           </ol>
           <div class="task-control" role="group" aria-label="Forecast scenario">
-            <span class="task-ctl-l">Forecast for the pad</span>
+            <span class="task-ctl-l">Forecast for the pad:</span>
             <button type="button" class="is-on" data-fc="clear">Clear skies</button>
             <button type="button" data-fc="storm">Thunderstorm in 30 min</button>
           </div>
@@ -544,16 +499,12 @@
         <!-- LuminaBox -->
         <article class="solution" id="luminabox">
           <div class="solution-copy">
-            <p class="solution-tag">LuminaBox · sensing hardware</p>
-            <h3>Health and location of whatever it is attached to.</h3>
+            <h3>A small box that tells you how its cargo is doing</h3>
             <p>
-              LuminaBox monitors payloads, vehicle segments, containers, and tankers, in storage or in transit. It
-              senses collisions, vibration, temperature, and humidity and reports to a base station, giving LuminaTwin a
-              live feed of the entire site.
+              LuminaBox clips onto payloads, vehicle sections, containers and tankers, whether they are sitting in
+              storage or on the move. It feels for knocks, vibration, temperature and humidity, tracks its position,
+              and reports to a base station. LuminaTwin uses that feed to see the whole site at once.
             </p>
-            <ul class="chips" aria-label="LuminaBox sensing channels">
-              <li>Collision</li><li>Vibration</li><li>Temperature</li><li>Humidity</li><li>Location</li>
-            </ul>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"warehouse"}'>See it in the model &rarr;</button></p>
           </div>
           <div class="solution-visual hw">
@@ -565,16 +516,15 @@
         <!-- Road health -->
         <article class="solution reverse" id="roadhealth">
           <div class="solution-copy">
-            <p class="solution-tag">Use case · road health</p>
-            <h3>Flag road damage before it becomes a problem.</h3>
+            <h3>Let the trucks tell you which roads are broken</h3>
             <p>
-              A LuminaBox on a fuel tanker registers a vertical acceleration spike when the truck hits a bump, and the
-              affected road segment is reported to the command center for remediation.
+              When a fuel tanker with a LuminaBox hits a pothole, the sensor feels the jolt and reports exactly where
+              it happened. Do that across a whole convoy and a repair list writes itself.
             </p>
             <p class="see-row"><button type="button" class="see-model" data-go='{"scn":"road"}'>See it in the model &rarr;</button></p>
           </div>
           <figure class="solution-visual trace" id="trace">
-            <div class="viz-title-row"><span class="viz-title">Vertical acceleration, tanker pass</span><span class="console-tag">Illustrative</span></div>
+            <div class="viz-title-row"><span class="viz-title">Vertical acceleration as a tanker passes (simulated)</span></div>
             <svg viewBox="0 0 520 220" id="trace-svg" role="img" aria-label="Line chart of vertical acceleration near 9.8 meters per second squared with a spike to about 13.5 at 4.2 seconds, crossing a flag threshold at 12.">
               <g class="axis"><line x1="44" y1="190" x2="510" y2="190" /><line x1="44" y1="20" x2="44" y2="190" /></g>
               <g class="tick"><text x="38" y="194" text-anchor="end">6</text><text x="38" y="144" text-anchor="end">9</text><text x="38" y="94" text-anchor="end">12</text><text x="38" y="44" text-anchor="end">15</text>
@@ -583,16 +533,15 @@
               <path id="trace-path" class="line" d="" />
               <g id="trace-flag" class="flag" opacity="0"><circle r="6" /><text y="-14" text-anchor="middle">Road segment flagged</text></g>
             </svg>
-            <div class="trace-foot"><span id="trace-status">Monitoring…</span><button type="button" id="trace-replay">Replay</button></div>
+            <div class="trace-foot"><span id="trace-status">Listening…</span><button type="button" id="trace-replay">Replay</button></div>
           </figure>
         </article>
 
         <!-- Device monitor -->
         <figure class="monitor">
           <div class="monitor-copy">
-            <p class="solution-tag">Base station software</p>
-            <h3>Live device monitor.</h3>
-            <p>A web console lists each LuminaBox, its latest readings, and its position on a map.</p>
+            <h3>What the base station sees</h3>
+            <p>This is the web page the base stations feed: a table of every LuminaBox with its latest readings, and a map of where each one is.</p>
           </div>
           <img src="assets/deck/device-monitor.png" alt="Screenshot of the LuminaFlows device monitor showing a device table and a map." />
         </figure>
@@ -602,162 +551,26 @@
       <section class="twin" id="twin" aria-labelledby="twin-title">
         <div class="twin-inner">
           <div class="section-heading on-dark">
-            <p class="eyebrow">Interactive 3D · CAD + live weather</p>
-            <h2 id="twin-title">See the forecast on the facility, not just on the map.</h2>
+            <h2 id="twin-title">Try it yourself</h2>
             <p>
-              A 3D geospatial twin of the Kennedy Space Center and Cape Canaveral area, connected to open-source weather
-              prediction data. Forecast winds and precipitation are projected onto facility massing, roads, and
-              LuminaBox-tracked TEU containers, so you can see which assets and work areas are affected, and when.
-              Switch between road transit, warehouse inventory, shipping routes into Cape Canaveral, and a notional
-              rocket-cargo delivery to Japan, with satellite communications carrying tracking wherever RF and cellular
-              coverage ends. Drag to orbit, scroll to zoom.
+              This is a 3D model of Kennedy Space Center and Cape Canaveral with live open weather data. Follow a convoy
+              of shipping containers from a warehouse to the Vehicle Assembly Building and out to the pad. Watch ships
+              and trucks arrive from Houston, Miami and Atlanta. Or step through a notional rocket delivery to Japan.
+              Everything that moves is simulated, but the roads, buildings and weather are real. Drag to look around,
+              or open it full screen and send someone a link to a particular view.
             </p>
           </div>
 
-          <div class="twin-ui" id="twin-ui">
-            <div class="twin-side">
-              <h3 class="side-title">Facilities</h3>
-              <div class="fac-list" role="tablist" aria-label="Facility selector">
-                <button class="fac is-active" role="tab" aria-selected="true" data-site="all" type="button">
-                  <span>Site overview</span><small>KSC + CCSFS</small>
-                </button>
-                <button class="fac" role="tab" aria-selected="false" data-site="vab" type="button">
-                  <span>Vehicle Assembly Building</span><small>Integration · crawlerway</small>
-                </button>
-                <button class="fac" role="tab" aria-selected="false" data-site="lc39a" type="button">
-                  <span>Launch Complex 39A</span><small>Pad · service tower</small>
-                </button>
-                <button class="fac" role="tab" aria-selected="false" data-site="lc39b" type="button">
-                  <span>Launch Complex 39B</span><small>Pad · lightning towers</small>
-                </button>
-                <button class="fac" role="tab" aria-selected="false" data-site="slc40" type="button">
-                  <span>Space Launch Complex 40</span><small>Cape Canaveral SFS</small>
-                </button>
-              </div>
-
-              <div id="res-group">
-                <h3 class="side-title">Weather resolution</h3>
-                <div class="seg" id="res-mode" role="group" aria-label="Weather resolution">
-                  <button type="button" class="is-on" data-res="coarse" aria-pressed="true">Forecast grid<small>~7 km cells</small></button>
-                  <button type="button" data-res="fine" aria-pressed="false">Downscaled<small>hypothetical sim</small></button>
-                </div>
-                <p class="seg-note" id="res-note"></p>
-                <div class="whatif" id="whatif" hidden>
-                  <label for="wi-spd">What-if wind speed <output id="wi-spd-out">forecast</output></label>
-                  <input id="wi-spd" type="range" min="0" max="25" step="1" value="0" />
-                  <label for="wi-dir">Wind from <output id="wi-dir-out">forecast</output></label>
-                  <input id="wi-dir" type="range" min="0" max="355" step="5" value="90" disabled />
-                </div>
-              </div>
-
-              <h3 class="side-title">Data layers</h3>
-              <div class="layers">
-                <label><input type="checkbox" data-layer="wind" checked /><span>Wind vectors</span></label>
-                <label><input type="checkbox" data-layer="precip" checked /><span>Precipitation forecast</span></label>
-                <label><input type="checkbox" data-layer="radar" /><span>NOAA radar (latest)</span></label>
-                <label><input type="checkbox" data-layer="cad" checked /><span>Facility 3D massing</span></label>
-                <label><input type="checkbox" data-layer="assets" checked /><span>LuminaBox tracking</span></label>
-              </div>
-
-              <h3 class="side-title">Connectivity</h3>
-              <div class="seg seg4" id="link-filter" role="group" aria-label="Show link type">
-                <button type="button" class="is-on" data-lf="all" aria-pressed="true">All</button>
-                <button type="button" data-lf="rf" aria-pressed="false" title="Base-station RF links">RF</button>
-                <button type="button" data-lf="cell" aria-pressed="false" title="Cellular links">Cell</button>
-                <button type="button" data-lf="sat" aria-pressed="false" title="Satellite (SATCOM) links">SAT</button>
-              </div>
+          <div class="twin-embed">
+            <iframe id="twin-frame" title="Interactive 3D digital twin of Kennedy Space Center" src="twin.html?embed=1" loading="lazy" allow="fullscreen"></iframe>
+            <div class="twin-embed-bar">
+              <a id="twin-open" class="see-model" href="twin.html" target="_blank" rel="noopener">Open full screen &#8599;</a>
+              <button type="button" id="twin-copy" class="see-model">Copy link to this view</button>
+              <span id="twin-copied" class="copied" role="status"></span>
             </div>
-
-            <div class="twin-stage">
-              <div class="stage-bar">
-                <span id="stage-site">Site overview</span>
-                <span class="console-tag" id="data-badge">Loading data…</span>
-              </div>
-              <div class="scenario-tabs" role="tablist" aria-label="LuminaBox tracking scenarios">
-                <span class="tabs-label">LuminaBox tracking</span>
-                <button class="stab is-active" role="tab" aria-selected="true" data-scn="road" type="button">Road transit</button>
-                <button class="stab" role="tab" aria-selected="false" data-scn="warehouse" type="button">Warehouse</button>
-                <button class="stab" role="tab" aria-selected="false" data-scn="shipping" type="button">Shipping to Cape</button>
-                <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
-              </div>
-              <div class="tech-chips" id="tech-chips"></div>
-              <div class="cesium-wrap">
-                <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
-                  <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
-                </div>
-                <div class="ds-overlay" id="ds-overlay" hidden>
-                  <div class="ds-title">Wind speed at 2 m &middot; downscaled</div>
-                  <div class="ds-bar" aria-hidden="true"></div>
-                  <div class="ds-scale"><span id="ds-min">0</span><span id="ds-mid"></span><span id="ds-max"></span><em>m/s</em></div>
-                  <div class="ds-chip">Hypothetical simulation</div>
-                </div>
-                <div class="lb-overlay" id="lb-overlay" hidden>
-                  <div class="lb-card">
-                    <div class="lb-head"><span class="lb-dot"></span><b id="lb-title">LuminaBox LB-207</b></div>
-                    <div class="lb-sub" id="lb-sub">Tracking 1 TEU</div>
-                    <ul class="lb-legend" aria-label="Map legend">
-                      <li><i class="lg lg-asset"></i>TEU tracked by a LuminaBox</li>
-                      <li><i class="lg lg-link"></i>Base-station RF link</li>
-                      <li><i class="lg lg-cell"></i>Cellular (LTE / 5G) link</li>
-                      <li><i class="lg lg-sat"></i>SATCOM link via satellite</li>
-                      <li><i class="lg lg-bs"></i>Base station</li>
-                    </ul>
-                    <button class="lb-follow" id="lb-follow" type="button" aria-pressed="false">Follow asset</button>
-                  </div>
-                  <div class="lb-chip" id="lb-chip"></div>
-                </div>
-              </div>
-              <ol class="phase-row" id="phase-row" hidden></ol>
-              <div class="stage-controls" id="ctl-mission" hidden>
-                <label for="mission-t">Mission timeline</label>
-                <input id="mission-t" type="range" min="0" max="1000" step="1" value="0" />
-                <output id="mission-out">T+00:00</output>
-                <button id="mission-play" type="button" aria-pressed="false">Play</button>
-              </div>
-              <div class="stage-controls" id="ctl-forecast">
-                <label for="hour">Forecast time</label>
-                <input id="hour" type="range" min="0" max="47" step="1" value="0" />
-                <output id="hour-out">Now</output>
-                <button id="play" type="button" aria-pressed="false">Play</button>
-              </div>
-              <p class="map-hint">Drag to orbit · scroll to zoom · right-drag or Ctrl-drag to tilt</p>
-            </div>
-
-            <div class="twin-readout" aria-live="polite">
-              <section class="lb-feed" id="lb-feed" aria-live="polite">
-                <h3 class="side-title"><span class="lb-dot"></span>LuminaBox feed</h3>
-                <div id="lb-feed-body"></div>
-              </section>
-              <div id="wx-readout">
-              <h3 class="side-title">Operational readout</h3>
-              <p class="readout-site" id="r-site">Site overview</p>
-              <p class="readout-time" id="r-time">-</p>
-              <dl class="readout">
-                <div><dt>Wind</dt><dd id="r-wind">-</dd></div>
-                <div><dt>Gust</dt><dd id="r-gust">-</dd></div>
-                <div><dt>Precipitation</dt><dd id="r-precip">-</dd></div>
-                <div><dt>Temperature</dt><dd id="r-temp">-</dd></div>
-              </dl>
-              <div class="ds-stats" id="ds-stats" hidden></div>
-
-              <div class="spark" id="sp-gust-wrap">
-                <span class="spark-title">Gust · 48 h (m/s)</span>
-                <svg id="sp-gust" viewBox="0 0 240 52" preserveAspectRatio="none" role="img" aria-label="Forecast gust speed over 48 hours; click to set the time"></svg>
-              </div>
-              <div class="spark">
-                <span class="spark-title">Precipitation · 48 h (mm/h)</span>
-                <svg id="sp-precip" viewBox="0 0 240 52" preserveAspectRatio="none" role="img" aria-label="Forecast precipitation over 48 hours; click to set the time"></svg>
-              </div>
-
-              <ul class="status-list" id="status-list"></ul>
-              <p class="retask" id="retask"></p>
-              </div>
-              <p class="fine" id="src-note">
-                Weather: Open-Meteo open forecast API (open national models). Radar: NOAA MRMS. Imagery: OpenStreetMap
-                contributors. Facility footprints and heights are approximate massing for concept demonstration, not
-                survey or CAD data. LuminaBox telemetry, container contents, the warehouse, shipping routes, the
-                satellite constellation, and the Japan delivery trajectory are simulated or approximate, for illustration. Status thresholds are illustrative. Not for operational use.
-              </p>
+            <div class="twin-mobile">
+              <p>The 3D model works best on a larger screen, but it runs on phones too. It opens as its own page.</p>
+              <a class="button primary" href="twin.html" target="_blank" rel="noopener">Open the digital twin</a>
             </div>
           </div>
         </div>
@@ -766,30 +579,27 @@
       <!-- 5. PARTNERS -->
       <section class="section" id="partners" aria-labelledby="partners-title">
         <div class="section-heading">
-          <p class="eyebrow">Clients &amp; institutions</p>
-          <h2 id="partners-title">Consulting and program work in advanced defense technology.</h2>
+          <h2 id="partners-title">Who we work with</h2>
+          <p>We consult on advanced defense and mission technology, and we have been funded to research it.</p>
         </div>
 
         <div class="client-grid">
           <article class="client-card">
-            <span class="client-kind">Client engagement</span>
             <h3>Persus Defense</h3>
-            <p>Strategic technical consulting supporting advanced defense and mission technology development.</p>
+            <p>We provide technical consulting on advanced defense and mission technology.</p>
           </article>
           <article class="client-card">
-            <span class="client-kind">Client engagement</span>
             <h3>SerenX Defense</h3>
-            <p>Program partnership in advanced defense and mission technology.</p>
+            <p>We are partners on a program in the same area.</p>
           </article>
         </div>
 
         <div class="sponsors" aria-labelledby="sponsors-title">
           <div>
-            <p class="eyebrow">Funders &amp; stakeholders</p>
-            <h3 id="sponsors-title">Research and development supported by U.S. government sponsors.</h3>
+            <h3 id="sponsors-title">Who has funded our research</h3>
             <p>
-              Logos identify organizations connected to selected experience and collaborations; their presence does not
-              imply endorsement.
+              These logos show organizations we have worked with or been funded by. They don't mean any of them endorse
+              us.
             </p>
           </div>
           <div class="logo-groups">
@@ -802,7 +612,7 @@
               </ul>
             </div>
             <div class="logo-group">
-              <h4>Academic collaborators</h4>
+              <h4>Universities we work with</h4>
               <ul class="logo-list collaborator-list">
                 <li><img src="assets/logos/penn-state-general.png" alt="Penn State University" /></li>
                 <li><img src="assets/logos/embry-riddle.svg" alt="Embry-Riddle Aeronautical University" /></li>
@@ -813,37 +623,28 @@
         </div>
       </section>
 
-      <!-- 6. TECHNICAL CREDIBILITY -->
+      <!-- 6. RESEARCH -->
       <section class="section credibility" id="credibility" aria-labelledby="cred-title">
         <div class="section-heading">
-          <p class="eyebrow">Technical credibility</p>
-          <h2 id="cred-title">Peer-reviewed physics, applied to operational problems.</h2>
-          <p>
-            The methods behind our platforms are published and validated. The figures below come from our project
-            materials and publications.
-          </p>
+          <h2 id="cred-title">The numbers behind the work</h2>
+          <p>A few figures from our project materials.</p>
         </div>
 
-        <div class="metric-grid">
-          <div class="metric"><strong>1.8 mi → 1 ft</strong><span>Weather-model upsampling from NOAA forecast resolution to facility scale</span></div>
-          <div class="metric"><strong>1 in 3</strong><span>Launch attempts scrubbed under the current NASA rule of thumb</span></div>
-          <div class="metric"><strong>~$20M → ~$100M</strong><span>Annual scrub cost today, scaled to military launch cadence</span></div>
-          <div class="metric"><strong>6% / 29%</strong><span>Model-vs-CFD error, natural vs. forced ventilation, in a published airflow comparison</span></div>
+        <div class="metric-grid metric-three">
+          <div class="metric"><strong>1.8 mi to 1 ft</strong><span>How far we refine a NOAA forecast, from the model's cell size down to the scale of a building</span></div>
+          <div class="metric"><strong>1 in 3</strong><span>Launch attempts that get scrubbed, by NASA's current rule of thumb</span></div>
+          <div class="metric"><strong>$20M to $100M</strong><span>Yearly cost of scrubs today, and at the launch rate the Air Force and Space Force want</span></div>
         </div>
-
-        <div class="pub-grid">
-          <p>Only verified RocketCargo-specific papers will be listed here.</p>
-        </div>
+        <!-- TODO: list verified RocketCargo-specific papers here once they are confirmed. -->
 
         <div class="efforts">
           <div>
-            <p class="eyebrow">Linked efforts</p>
-            <h3>Related public program and event references.</h3>
+            <h3>Elsewhere on the web</h3>
           </div>
           <ul class="effort-list">
             <li>
               <a href="https://www.sbir.gov/portfolio/1482103" target="_blank" rel="noopener noreferrer">
-                <span>Advanced CFD Solutions</span>SBIR/STTR portfolio
+                <span>Advanced CFD Solutions</span>Our SBIR/STTR listing
               </a>
             </li>
             <li>
@@ -852,29 +653,50 @@
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span>SIANC-ST&amp;I</span>Orlando conference coverage
+                <span>SIANC-ST&amp;I</span>ONR's coverage of the Orlando conference
               </a>
             </li>
           </ul>
         </div>
       </section>
 
-      <!-- 7. CONTACT -->
+      <!-- 7. ABOUT -->
+      <section class="about" id="about" aria-labelledby="about-title">
+        <div class="about-inner">
+          <h2 id="about-title">A small team that likes hard flow problems</h2>
+          <div class="about-copy">
+            <p>
+              Lumina Flows is a small engineering and technical-services company based in the U.S. Our people have
+              backgrounds in engineering, computing and research software, and we have worked on both government and
+              private-sector projects.
+            </p>
+            <p>
+              Being small is on purpose. It lets us move quickly and stay flexible, and we would rather build something
+              useful than run a big process. We also care about keeping this kind of technical know-how in the U.S.
+            </p>
+            <p>
+              Along the way we organize technical conferences and workshops too, because in this field the best ideas
+              usually come from putting the right people in one room.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. CONTACT -->
       <section class="contact" id="contact" aria-labelledby="contact-title">
         <div class="contact-inner">
           <div>
-            <p class="eyebrow">Partnerships · consulting · program engagement</p>
-            <h2 id="contact-title">Bring us the mission problem.</h2>
+            <h2 id="contact-title">Tell us what you're trying to do</h2>
             <p>
-              Whether you need embedded engineering support, a simulation-backed decision tool, or a partner for a
-              sponsored program, we will start with your operating constraints and the data you already have.
+              It might be a consulting question, a pilot program, or a hard problem you haven't managed to simulate yet.
+              Send us a note and we'll tell you honestly whether we can help.
             </p>
           </div>
           <address class="contact-card">
             <span>Email</span>
             <!-- TODO: Replace this placeholder with the company's verified email address. -->
             <a href="mailto:contact@company.com">contact@company.com</a>
-            <a class="button primary full" href="mailto:contact@company.com?subject=Program%20inquiry">Start a conversation</a>
+            <a class="button primary full" href="mailto:contact@company.com?subject=Hello%20from%20the%20website">Write to us</a>
           </address>
         </div>
       </section>
@@ -889,9 +711,5 @@
 
     <script src="script.js"></script>
     <script src="platform.js"></script>
-    <script src="ksc-data.js"></script>
-    <script src="twin3d.js"></script>
-    <script src="lumina-tracking.js"></script>
-    <script src="downscale.js"></script>
   </body>
 </html>

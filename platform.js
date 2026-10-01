@@ -221,6 +221,13 @@
 
 /* ---------- Links from page technologies into the 3D model ---------- */
 (function () {
+  const frame = document.querySelector("#twin-frame");
+  const query = (p) => {
+    const q = new URLSearchParams();
+    Object.keys(p).forEach((k) => q.set(k, p[k]));
+    return q.toString();
+  };
+  if (frame) frame.addEventListener("load", () => (frame.dataset.ready = "1"));
   function go(btn) {
     let p;
     try {
@@ -228,11 +235,46 @@
     } catch (e) {
       return;
     }
-    const target = document.querySelector("#twin-ui");
+    // phones: the model opens as its own page
+    if (window.innerWidth < 760 || !frame) {
+      window.open("twin.html?" + query(p), "_blank");
+      return;
+    }
+    const target = document.querySelector("#twin");
     if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (typeof window.twinGo === "function") window.twinGo(p);
-    else window.__twinPending = p; // applied when the 3D map finishes loading
+    const w = frame.contentWindow;
+    if (frame.dataset.ready === "1" && w) {
+      if (typeof w.twinGo === "function") w.twinGo(p);
+      else w.__twinPending = p; // map still loading: applied as soon as it is ready
+    } else {
+      frame.src = "twin.html?embed=1&" + query(p);
+    }
   }
+  const open = document.querySelector("#twin-open");
+  const copy = document.querySelector("#twin-copy");
+  const note = document.querySelector("#twin-copied");
+  const currentUrl = () => {
+    const w = frame && frame.contentWindow;
+    return w && typeof w.twinUrl === "function" ? w.twinUrl() : new URL("twin.html", location.href).toString();
+  };
+  if (open)
+    open.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      window.open(currentUrl(), "_blank", "noopener");
+    });
+  if (copy)
+    copy.addEventListener("click", async () => {
+      const url = currentUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+        if (note) {
+          note.textContent = "Link copied";
+          setTimeout(() => (note.textContent = ""), 2200);
+        }
+      } catch (e) {
+        window.prompt("Copy this link:", url);
+      }
+    });
   document.addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-go]");
     if (b) go(b);
@@ -245,4 +287,19 @@
       go(b);
     }
   });
+})();
+
+/* Hero video: respect reduced motion, and stop playing when it is off screen */
+(function () {
+  const v = document.querySelector("#hero-video");
+  if (!v) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    v.removeAttribute("autoplay");
+    v.pause();
+    return;
+  }
+  new IntersectionObserver((es) => {
+    if (es[0].isIntersecting) v.play().catch(() => {});
+    else v.pause();
+  }, { threshold: 0.2 }).observe(v);
 })();

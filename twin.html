@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumina Flows | Kennedy Space Center digital twin</title>
+    <meta name="description" content="Interactive 3D digital twin of Kennedy Space Center and Cape Canaveral: live open weather, LuminaBox-tracked TEU containers, and simulated telemetry." />
+    <meta name="theme-color" content="#06121f" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="platform.css" />
+  </head>
+  <body class="twin-page">
+    <header class="tp-bar">
+      <a class="tp-brand" href="index.html" target="_top" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
+      <div class="tp-title">
+        <b>Kennedy Space Center digital twin</b>
+        <span>Live open weather &middot; simulated LuminaBox telemetry &middot; OpenStreetMap geometry</span>
+      </div>
+      <div class="tp-actions">
+        <button type="button" id="twin-copy" class="see-model">Copy link to this view</button>
+        <span id="twin-copied" class="copied" role="status"></span>
+        <a class="tp-back" href="index.html" target="_top">Back to the site</a>
+      </div>
+    </header>
+
+    <main class="twin tp-main" id="twin">
+      <div class="twin-inner">
+          <div class="twin-ui" id="twin-ui">
+            <div class="twin-side">
+              <h3 class="side-title">Facilities</h3>
+              <div class="fac-list" role="tablist" aria-label="Facility selector">
+                <button class="fac is-active" role="tab" aria-selected="true" data-site="all" type="button">
+                  <span>Site overview</span><small>KSC + CCSFS</small>
+                </button>
+                <button class="fac" role="tab" aria-selected="false" data-site="vab" type="button">
+                  <span>Vehicle Assembly Building</span><small>Integration · crawlerway</small>
+                </button>
+                <button class="fac" role="tab" aria-selected="false" data-site="lc39a" type="button">
+                  <span>Launch Complex 39A</span><small>Pad · service tower</small>
+                </button>
+                <button class="fac" role="tab" aria-selected="false" data-site="lc39b" type="button">
+                  <span>Launch Complex 39B</span><small>Pad · lightning towers</small>
+                </button>
+                <button class="fac" role="tab" aria-selected="false" data-site="slc40" type="button">
+                  <span>Space Launch Complex 40</span><small>Cape Canaveral SFS</small>
+                </button>
+              </div>
+
+              <div id="res-group">
+                <h3 class="side-title">Weather resolution</h3>
+                <div class="seg" id="res-mode" role="group" aria-label="Weather resolution">
+                  <button type="button" class="is-on" data-res="coarse" aria-pressed="true">Forecast grid<small>~7 km cells</small></button>
+                  <button type="button" data-res="fine" aria-pressed="false">Downscaled<small>hypothetical sim</small></button>
+                </div>
+                <p class="seg-note" id="res-note"></p>
+                <div class="whatif" id="whatif" hidden>
+                  <label for="wi-spd">What-if wind speed <output id="wi-spd-out">forecast</output></label>
+                  <input id="wi-spd" type="range" min="0" max="25" step="1" value="0" />
+                  <label for="wi-dir">Wind from <output id="wi-dir-out">forecast</output></label>
+                  <input id="wi-dir" type="range" min="0" max="355" step="5" value="90" disabled />
+                </div>
+              </div>
+
+              <h3 class="side-title">Data layers</h3>
+              <div class="layers">
+                <label><input type="checkbox" data-layer="wind" checked /><span>Wind vectors</span></label>
+                <label><input type="checkbox" data-layer="precip" checked /><span>Precipitation forecast</span></label>
+                <label><input type="checkbox" data-layer="radar" /><span>NOAA radar (latest)</span></label>
+                <label><input type="checkbox" data-layer="cad" checked /><span>Facility 3D massing</span></label>
+                <label><input type="checkbox" data-layer="assets" checked /><span>LuminaBox tracking</span></label>
+              </div>
+
+              <h3 class="side-title">Connectivity</h3>
+              <div class="seg seg4" id="link-filter" role="group" aria-label="Show link type">
+                <button type="button" class="is-on" data-lf="all" aria-pressed="true">All</button>
+                <button type="button" data-lf="rf" aria-pressed="false" title="Base-station RF links">RF</button>
+                <button type="button" data-lf="cell" aria-pressed="false" title="Cellular links">Cell</button>
+                <button type="button" data-lf="sat" aria-pressed="false" title="Satellite (SATCOM) links">SAT</button>
+              </div>
+            </div>
+
+            <div class="twin-stage">
+              <div class="stage-bar">
+                <span id="stage-site">Site overview</span>
+                <span class="console-tag" id="data-badge">Loading data…</span>
+              </div>
+              <div class="scenario-tabs" role="tablist" aria-label="LuminaBox tracking scenarios">
+                <span class="tabs-label">LuminaBox tracking</span>
+                <button class="stab is-active" role="tab" aria-selected="true" data-scn="road" type="button">Road transit</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="warehouse" type="button">Warehouse</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="shipping" type="button">Shipping to Cape</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
+              </div>
+              <div class="tech-chips" id="tech-chips"></div>
+              <div class="cesium-wrap">
+                <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
+                  <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
+                </div>
+                <div class="ds-overlay" id="ds-overlay" hidden>
+                  <div class="ds-head"><div class="ds-title">Wind speed at 2 m &middot; downscaled</div><button type="button" class="lb-min" id="ds-min" aria-expanded="true" aria-label="Minimize legend" title="Minimize">&minus;</button></div>
+                  <div class="ds-bar" aria-hidden="true"></div>
+                  <div class="ds-scale"><span id="ds-min">0</span><span id="ds-mid"></span><span id="ds-max"></span><em>m/s</em></div>
+                  <div class="ds-chip">Hypothetical simulation</div>
+                </div>
+                <div class="lb-overlay" id="lb-overlay" hidden>
+                  <div class="lb-card">
+                    <div class="lb-head"><span class="lb-dot"></span><b id="lb-title">LuminaBox convoy</b><button type="button" class="lb-min" id="lb-min" aria-expanded="true" aria-label="Minimize this panel" title="Minimize">&minus;</button></div>
+                    <div class="lb-sub" id="lb-sub">Tracking 1 TEU</div>
+                    <ul class="lb-legend" aria-label="Map legend">
+                      <li><i class="lg lg-asset"></i>TEU tracked by a LuminaBox</li>
+                      <li><i class="lg lg-link"></i>Base-station RF link</li>
+                      <li><i class="lg lg-cell"></i>Cellular (LTE / 5G) link</li>
+                      <li><i class="lg lg-sat"></i>SATCOM link via satellite</li>
+                      <li><i class="lg lg-bs"></i>Base station</li>
+                    </ul>
+                    <button class="lb-follow" id="lb-follow" type="button" aria-pressed="false">Follow asset</button>
+                  </div>
+                  <div class="lb-chip" id="lb-chip"></div>
+                </div>
+              </div>
+              <ol class="phase-row" id="phase-row" hidden></ol>
+              <div class="stage-controls" id="ctl-mission" hidden>
+                <label for="mission-t">Mission timeline</label>
+                <input id="mission-t" type="range" min="0" max="1000" step="1" value="0" />
+                <output id="mission-out">T+00:00</output>
+                <button id="mission-play" type="button" aria-pressed="false">Play</button>
+              </div>
+              <div class="stage-controls" id="ctl-forecast">
+                <label for="hour">Forecast time</label>
+                <input id="hour" type="range" min="0" max="47" step="1" value="0" />
+                <output id="hour-out">Now</output>
+                <button id="play" type="button" aria-pressed="false">Play</button>
+              </div>
+              <p class="map-hint">Drag to orbit · scroll to zoom · right-drag or Ctrl-drag to tilt</p>
+            </div>
+
+            <div class="twin-readout" aria-live="polite">
+              <section class="lb-feed" id="lb-feed" aria-live="polite">
+                <h3 class="side-title"><span class="lb-dot"></span>LuminaBox feed</h3>
+                <div id="lb-feed-body"></div>
+              </section>
+              <div id="wx-readout">
+              <h3 class="side-title">Operational readout</h3>
+              <p class="readout-site" id="r-site">Site overview</p>
+              <p class="readout-time" id="r-time">-</p>
+              <dl class="readout">
+                <div><dt>Wind</dt><dd id="r-wind">-</dd></div>
+                <div><dt>Gust</dt><dd id="r-gust">-</dd></div>
+                <div><dt>Precipitation</dt><dd id="r-precip">-</dd></div>
+                <div><dt>Temperature</dt><dd id="r-temp">-</dd></div>
+              </dl>
+              <div class="ds-stats" id="ds-stats" hidden></div>
+
+              <div class="spark" id="sp-gust-wrap">
+                <span class="spark-title">Gust · 48 h (m/s)</span>
+                <svg id="sp-gust" viewBox="0 0 240 52" preserveAspectRatio="none" role="img" aria-label="Forecast gust speed over 48 hours; click to set the time"></svg>
+              </div>
+              <div class="spark">
+                <span class="spark-title">Precipitation · 48 h (mm/h)</span>
+                <svg id="sp-precip" viewBox="0 0 240 52" preserveAspectRatio="none" role="img" aria-label="Forecast precipitation over 48 hours; click to set the time"></svg>
+              </div>
+
+              <ul class="status-list" id="status-list"></ul>
+              <p class="retask" id="retask"></p>
+              </div>
+              <p class="fine" id="src-note">
+                Weather: Open-Meteo open forecast API (open national models). Radar: NOAA MRMS. Imagery: OpenStreetMap
+                contributors. Facility footprints and heights are approximate massing for concept demonstration, not
+                survey or CAD data. LuminaBox telemetry, container contents, the warehouse, shipping routes, the
+                satellite constellation, and the Japan delivery trajectory are simulated or approximate, for illustration. Status thresholds are illustrative. Not for operational use.
+              </p>
+            </div>
+          </div>
+      </div>
+    </main>
+
+    <script src="ksc-data.js"></script>
+    <script src="twin3d.js"></script>
+    <script src="lumina-tracking.js"></script>
+    <script src="downscale.js"></script>
+    <script src="twin-page.js"></script>
+  </body>
+</html>
