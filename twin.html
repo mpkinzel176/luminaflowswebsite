@@ -141,6 +141,15 @@
                     <button type="button" class="is-on" data-hz="view:fused" aria-pressed="true">LuminaBox fused</button>
                     <button type="button" data-hz="view:gnss" aria-pressed="false">GNSS only</button>
                   </div></div>
+                <fieldset class="hz-map-layers">
+                  <legend>Maritime context layers</legend>
+                  <label><input type="checkbox" data-hz-layer="closure" /><i class="hz-swatch closure"></i><span>Historical closure footprint <small>illustrative; event dates need confirmation</small></span></label>
+                  <label><input type="checkbox" data-hz-layer="corridor" checked /><i class="hz-swatch corridor"></i><span>Southern corridor near Oman <small>illustrative; confirm against current advisories</small></span></label>
+                  <label><input type="checkbox" data-hz-layer="mine" checked /><i class="hz-swatch mine"></i><span>TSS / mine-avoidance area <small>TSS from supplied chart; no mine point supplied</small></span></label>
+                  <label><input type="checkbox" data-hz-layer="threat" checked /><i class="hz-swatch threat"></i><span>Conflict-threat envelope <small>illustrative, not live intelligence</small></span></label>
+                  <label><input type="checkbox" data-hz-layer="disruption" checked /><i class="hz-swatch disruption"></i><span>Operational disruption area <small>illustrative extent</small></span></label>
+                </fieldset>
+                <p class="hz-map-note">Status summary: open, operations constrained. Approximate context only, not for navigation. Verify boundaries and dates against current official advisories.</p>
                 <button type="button" id="hz-stall" class="see-model">Stall a tanker</button>
               </div>
               <div class="stage-controls" id="ctl-forecast">
@@ -195,6 +204,7 @@
     <script src="ksc-data.js"></script>
     <script src="twin3d.js"></script>
     <script src="lumina-tracking.js"></script>
+    <script src="hormuz-layers.js?v=2"></script>
     <script src="downscale.js"></script>
     <script src="twin-page.js"></script>
   </body>

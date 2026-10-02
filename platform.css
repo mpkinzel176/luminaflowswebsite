@@ -2428,6 +2428,69 @@ h1 {
   text-transform: uppercase;
 }
 
+.hz-map-layers {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0.65rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.hz-map-layers legend {
+  padding: 0 0.4rem 0 0;
+  color: var(--steel);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.hz-map-layers label {
+  display: grid;
+  grid-template-columns: 1rem 1rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.45rem;
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.hz-map-layers input {
+  margin: 0.15rem 0 0;
+  accent-color: var(--yellow);
+}
+
+.hz-map-layers small {
+  display: block;
+  color: var(--steel);
+  font-size: 0.68rem;
+}
+
+.hz-swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 2px;
+}
+
+.hz-swatch.closure { background: #8f211e; }
+.hz-swatch.corridor { background: #4dbb78; }
+.hz-swatch.mine { background: repeating-linear-gradient(135deg, #d94e4e 0 3px, transparent 3px 6px); }
+.hz-swatch.threat { background: #efb547; }
+.hz-swatch.disruption { background: repeating-linear-gradient(135deg, #a7afb7 0 3px, transparent 3px 6px); }
+
+.hz-map-note {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--steel);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 .seg3 {
   display: inline-flex;
   border: 1px solid var(--line);
