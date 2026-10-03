@@ -17,6 +17,7 @@
   /* ---------- Sites (approximate public coordinates) ---------- */
   const SITES = {
     all: { name: "Site overview", lat: 28.585, lon: -80.625, range: 38000, heading: 0, pitch: -48 },
+    warehouse: { name: "KSC Logistics Facility", lat: 28.577009, lon: -80.652022, range: 850, heading: 10, pitch: -38 },
     vab: { name: "Vehicle Assembly Building", lat: 28.58561, lon: -80.65089, range: 1000, heading: -35, pitch: -28 },
     lc39a: { name: "Launch Complex 39A", lat: 28.60836, lon: -80.6041, range: 1200, heading: 215, pitch: -27 },
     lc39b: { name: "Launch Complex 39B", lat: 28.6272, lon: -80.6208, range: 1200, heading: 140, pitch: -27 },
@@ -44,7 +45,9 @@
   let C = null;
   const arrows = [];
   const cells = [];
+  const windCells = [];
   const layers = { wind: [], precip: [], cad: [], assets: [], rocket: [] };
+  let forecastMode = "coarse";
   let radarLayer = null;
 
   const nearest = (lat, lon) => {
@@ -200,7 +203,7 @@
 
   /* ---------- Cesium scene ---------- */
   const speedColor = (v) =>
-    v >= 12 ? C.Color.fromCssColorString("#ff6b5b") : v >= 8 ? C.Color.fromCssColorString("#ffdf3c") : C.Color.fromCssColorString("#8fd3f4");
+    v >= 12 ? C.Color.fromCssColorString("#ff6b5b") : v >= 8 ? C.Color.fromCssColorString("#ffdf3c") : v >= 4 ? C.Color.fromCssColorString("#41b7e3") : C.Color.fromCssColorString("#326d96");
 
   function offset(lat, lon, bearingDeg, meters) {
     const b = (bearingDeg * Math.PI) / 180;
@@ -221,7 +224,8 @@
       const [lat2, lon2] = offset(g.lat, g.lon, to, len);
       const a = arrows[i];
       a.polyline.positions = C.Cartesian3.fromDegreesArrayHeights([g.lon, g.lat, 260, lon2, lat2, 260]);
-      a.polyline.material = new C.PolylineArrowMaterialProperty(speedColor(p.gust[hour]));
+      a.polyline.material = new C.PolylineArrowMaterialProperty(speedColor(sp));
+      windCells[i].rectangle.material = speedColor(sp).withAlpha(0.26);
       const pr = p.precip[hour];
       const c = cells[i];
       c.show = precipOn && pr >= 0.05;
@@ -244,6 +248,17 @@
       });
       arrows.push(arrow);
       layers.wind.push(arrow);
+      const windCell = viewer.entities.add({
+        rectangle: {
+          coordinates: C.Rectangle.fromDegrees(g.lon - H, g.lat - H, g.lon + H, g.lat + H),
+          material: speedColor(5).withAlpha(0.26),
+          height: 45,
+          outline: true,
+          outlineColor: C.Color.WHITE.withAlpha(0.18),
+        },
+      });
+      windCells.push(windCell);
+      layers.wind.push(windCell);
       const cell = viewer.entities.add({
         show: false,
         rectangle: {
@@ -325,6 +340,8 @@
     const polyCenter = (poly) => [poly.reduce((a, p) => a + p[0], 0) / poly.length, poly.reduce((a, p) => a + p[1], 0) / poly.length];
     polyEnt(KS.vab.poly, KS.vab.h, steel.withAlpha(0.78), "Vehicle Assembly Building");
     label(KS.vab.center[0], KS.vab.center[1], "Vehicle Assembly Building", 175, 90000);
+    polyEnt(KS.logistics.poly, 12, steel.withAlpha(0.78), "KSC Logistics Facility");
+    label(KS.logistics.center[0], KS.logistics.center[1], "KSC Logistics Facility", 24, 18000);
     polyEnt(KS.lcc.poly, KS.lcc.h, steel.withAlpha(0.7), "Launch Control Center");
     const lccC = polyCenter(KS.lcc.poly);
     label(lccC[0], lccC[1], "Launch Control Center", 40, 5000);
@@ -456,10 +473,17 @@
       if (k === "radar") {
         if (radarLayer) radarLayer.show = on;
       } else if (k !== "precip" && layers[k]) {
-        layers[k].forEach((e) => (e.show = on));
+        layers[k].forEach((e) => (e.show = on && !(k === "wind" && forecastMode === "fine")));
       }
     });
   }
+
+  window.addEventListener("twin:resolution", (event) => {
+    forecastMode = event.detail;
+    applyLayers();
+    const key = $("#wx-grid-key");
+    if (key) key.hidden = forecastMode !== "coarse";
+  });
 
   /* ---------- Controls ---------- */
   document.querySelectorAll("[data-layer]").forEach((cb) =>

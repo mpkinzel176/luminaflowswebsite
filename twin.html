@@ -7,7 +7,7 @@
     <meta name="description" content="Interactive 3D digital twin of Kennedy Space Center and Cape Canaveral: live open weather, LuminaBox-tracked TEU containers, and simulated telemetry." />
     <meta name="theme-color" content="#06121f" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="platform.css" />
+    <link rel="stylesheet" href="platform.css?v=intro-2" />
   </head>
   <body class="twin-page">
     <header class="tp-bar">
@@ -35,6 +35,9 @@
                 <button class="fac" role="tab" aria-selected="false" data-site="vab" type="button">
                   <span>Vehicle Assembly Building</span><small>Integration · crawlerway</small>
                 </button>
+                <button class="fac" role="tab" aria-selected="false" data-site="warehouse" type="button">
+                  <span>KSC Logistics Facility</span><small>Warehouse · LuminaBox inventory</small>
+                </button>
                 <button class="fac" role="tab" aria-selected="false" data-site="lc39a" type="button">
                   <span>Launch Complex 39A</span><small>Pad · service tower</small>
                 </button>
@@ -50,9 +53,13 @@
                 <h3 class="side-title">Weather resolution</h3>
                 <div class="seg" id="res-mode" role="group" aria-label="Weather resolution">
                   <button type="button" class="is-on" data-res="coarse" aria-pressed="true">Forecast grid<small>~7 km cells</small></button>
-                  <button type="button" data-res="fine" aria-pressed="false">Downscaled<small>hypothetical sim</small></button>
+                  <button type="button" data-res="fine" aria-pressed="false">Building-scale<small>~3 m hypothetical</small></button>
                 </div>
                 <p class="seg-note" id="res-note"></p>
+                <div class="wx-grid-key" id="wx-grid-key" aria-label="Forecast grid wind speed colors">
+                  <span><i class="wind-bin calm"></i>0-4</span><span><i class="wind-bin breeze"></i>4-8</span><span><i class="wind-bin strong"></i>8-12</span><span><i class="wind-bin severe"></i>12+ m/s</span>
+                  <small>Arrow points in wind direction</small>
+                </div>
                 <div class="whatif" id="whatif" hidden>
                   <label for="wi-spd">What-if wind speed <output id="wi-spd-out">forecast</output></label>
                   <input id="wi-spd" type="range" min="0" max="25" step="1" value="0" />
@@ -63,7 +70,7 @@
 
               <h3 class="side-title">Data layers</h3>
               <div class="layers">
-                <label><input type="checkbox" data-layer="wind" checked /><span>Wind vectors</span></label>
+                <label><input type="checkbox" data-layer="wind" checked /><span>Wind speed tiles + direction arrows</span></label>
                 <label><input type="checkbox" data-layer="precip" checked /><span>Precipitation forecast</span></label>
                 <label><input type="checkbox" data-layer="radar" /><span>NOAA radar (latest)</span></label>
                 <label><input type="checkbox" data-layer="cad" checked /><span>Facility 3D massing</span></label>
@@ -92,14 +99,20 @@
                 <button class="stab" role="tab" aria-selected="false" data-scn="hormuz" type="button">Strait of Hormuz</button>
               </div>
               <div class="tech-chips" id="tech-chips"></div>
+                <section class="scenario-intro" aria-live="polite" aria-labelledby="view-intro-title">
+                  <p class="eyebrow">This 3D view</p>
+                  <h2 id="view-intro-title">Follow a LuminaBox shipment</h2>
+                  <p id="view-intro-copy">The map combines facilities, weather, and simulated asset telemetry to show how LuminaBox keeps logistics data connected.</p>
+                  <p class="scenario-intro-action" id="view-intro-action">Choose a view above, then try its controls below the map.</p>
+                </section>
               <div class="cesium-wrap">
                 <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
                   <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
                 </div>
                 <div class="ds-overlay" id="ds-overlay" hidden>
-                  <div class="ds-head"><div class="ds-title">Wind speed at 2 m &middot; downscaled</div><button type="button" class="lb-min" id="ds-min" aria-expanded="true" aria-label="Minimize legend" title="Minimize">&minus;</button></div>
+                  <div class="ds-head"><div class="ds-title">Local wind speed &middot; simulated downscaling</div><button type="button" class="lb-min" id="ds-min" aria-expanded="true" aria-label="Minimize legend" title="Minimize">&minus;</button></div>
                   <div class="ds-bar" aria-hidden="true"></div>
-                  <div class="ds-scale"><span id="ds-min">0</span><span id="ds-mid"></span><span id="ds-max"></span><em>m/s</em></div>
+                  <div class="ds-scale"><span id="ds-min-val">0</span><span id="ds-mid"></span><span id="ds-max"></span><em>m/s</em></div>
                   <div class="ds-chip">Hypothetical simulation</div>
                 </div>
                 <div class="lb-overlay" id="lb-overlay" hidden>
@@ -141,6 +154,7 @@
                     <button type="button" class="is-on" data-hz="view:fused" aria-pressed="true">LuminaBox fused</button>
                     <button type="button" data-hz="view:gnss" aria-pressed="false">GNSS only</button>
                   </div></div>
+                <p class="hz-contested-note">Contested tracking (simulation): compare the GNSS-reported position with LuminaBox's fused track. Red markers show disagreement; this is not live threat data.</p>
                 <fieldset class="hz-map-layers">
                   <legend>Maritime context layers</legend>
                   <label><input type="checkbox" data-hz-layer="closure" /><i class="hz-swatch closure"></i><span>Historical closure footprint <small>illustrative; event dates need confirmation</small></span></label>
@@ -202,10 +216,11 @@
     </main>
 
     <script src="ksc-data.js"></script>
-    <script src="twin3d.js"></script>
+    <script src="twin3d.js?v=grid-warehouse-1"></script>
     <script src="lumina-tracking.js"></script>
+    <script src="twin-intro.js?v=1"></script>
     <script src="hormuz-layers.js?v=2"></script>
-    <script src="downscale.js"></script>
+    <script src="downscale.js?v=grid-warehouse-2"></script>
     <script src="twin-page.js"></script>
   </body>
 </html>

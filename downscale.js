@@ -15,13 +15,16 @@
     const overlay = $("#ds-overlay");
     const stats = $("#ds-stats");
     const whatif = $("#whatif");
+    const windLayer = document.querySelector('[data-layer="wind"]');
     const wiSpd = $("#wi-spd");
     const wiDir = $("#wi-dir");
     if (!group || !seg) return;
 
     const N = 200;
     const DOMAINS = {
+      all: { L: 1800, obs: [] },
       vab: { L: 560, obs: [{ x: 0, y: 0, R: 108, H: 160, hx: 96, hy: 121 }] },
+      warehouse: { L: 420, obs: [{ x: 0, y: 0, R: 110, H: 12, hx: 80, hy: 79 }] },
       lc39a: { L: 300, obs: [{ x: 0, y: 0, R: 6.5, H: 100 }, { x: -36, y: -9, R: 11, H: 100, hx: 6.5, hy: 11 }] },
       lc39b: { L: 300, obs: [] },
       slc40: { L: 300, obs: [] },
@@ -272,7 +275,7 @@
       tracers.forEach((t) => spawn(t, true));
 
       // legend + stats
-      $("#ds-min").textContent = "0";
+      $("#ds-min-val").textContent = "0";
       $("#ds-mid").textContent = (vmax / 2).toFixed(0);
       $("#ds-max").textContent = vmax.toFixed(0);
       const dir = Math.round((Math.atan2(-cw.ux, -cw.uy) * 180) / Math.PI + 360) % 360;
@@ -293,12 +296,12 @@
     /* ---------- mode / visibility ---------- */
     function pickSite() {
       const sel = getSelected();
-      site = DOMAINS[sel] ? sel : "vab";
+      site = DOMAINS[sel] ? sel : "all";
     }
     function apply() {
       const weatherTab = scn === "road" || scn === "warehouse";
       group.hidden = !weatherTab;
-      const on = mode === "fine" && weatherTab && !!getWx();
+      const on = mode === "fine" && weatherTab && !!getWx() && (!windLayer || windLayer.checked);
       rectEnt.show = on;
       outlineEnt.show = on;
       labelEnt.show = on;
@@ -313,21 +316,21 @@
       });
       note.textContent =
         mode === "fine"
-          ? "Hypothetical: the forecast is refined to ~3 m cells around the facility (concept target: 1 ft), with flow around buildings, wakes, and turbulence."
-          : "Open-model forecast cells, several km across. Winds are uniform across a facility.";
+          ? "Hypothetical: the open forecast is refined to ~3 m cells around the map center or selected facility, including simplified building flow and wakes."
+          : "Open-model forecast on ~7 km cells. Tile color shows wind speed; arrows show direction. Select a facility or keep Site overview for the center box.";
+      const gridKey = $("#wx-grid-key");
+      if (gridKey) gridKey.hidden = mode !== "coarse";
+      window.dispatchEvent(new CustomEvent("twin:resolution", { detail: mode }));
       if (on) {
         pickSite();
         build();
       }
     }
+    if (windLayer) windLayer.addEventListener("change", apply);
     seg.addEventListener("click", (ev) => {
       const b = ev.target.closest("[data-res]");
       if (!b) return;
       mode = b.dataset.res;
-      if (mode === "fine" && getSelected() === "all") {
-        const vabBtn = document.querySelector('.fac[data-site="vab"]');
-        if (vabBtn) vabBtn.click();
-      }
       apply();
     });
     [wiSpd, wiDir].forEach((el) =>
