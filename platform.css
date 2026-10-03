@@ -2954,3 +2954,66 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Tracking note + downscaling box controls */
+.tracking-note {
+  margin: 0;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--line);
+  color: #c6d8e6;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.tracking-note b {
+  color: var(--yellow);
+}
+
+.ds-box {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.ds-box label {
+  color: #c6d8e6;
+  font-size: 0.74rem;
+}
+
+.ds-box select {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.ds-box .ds-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ds-box .ds-check input {
+  accent-color: var(--yellow);
+}
+
+.ds-pin {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ds-pin[aria-pressed="true"] {
+  border-color: var(--yellow);
+  box-shadow: inset 0 -2px 0 var(--yellow);
+}

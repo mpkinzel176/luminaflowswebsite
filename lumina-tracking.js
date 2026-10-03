@@ -2292,19 +2292,22 @@
       followBtn.hidden = !m.follow;
       followBtn.textContent = m.follow || "";
       followBtn.setAttribute("aria-pressed", id === "launch" ? "true" : "false");
-      ctlForecast.hidden = id !== "road";
+      ctlForecast.hidden = !(id === "road" || id === "launch" || id === "hormuz");
       if (ctlHz) ctlHz.hidden = id !== "hormuz";
       ctlMission.hidden = id !== "launch";
       phaseRow.hidden = id !== "launch";
-      wxReadout.hidden = id === "launch" || id === "shipping" || id === "hormuz";
-      // weather overlays: hidden during the global launch view, restored otherwise
-      if (id === "launch" || id === "shipping" || id === "hormuz") {
+      wxReadout.hidden = id === "shipping";
+      // weather overlays: hidden on the open-ocean shipping view (no forecast grid there); launch uses the KSC grid, Hormuz its own
+      if (id === "shipping") {
         layers.wind.forEach((e) => (e.show = false));
         layers.precip.forEach((e) => (e.show = false));
+      }
+      if (id === "launch" || id === "shipping" || id === "hormuz") {
         layers.rocket.forEach((e) => (e.show = id !== "launch"));
         viewer.scene.screenSpaceCameraController.maximumZoomDistance = Infinity;
-      } else {
-        layers.rocket.forEach((e) => (e.show = true));
+      }
+      if (id !== "shipping") {
+        if (id !== "launch" && id !== "hormuz") layers.rocket.forEach((e) => (e.show = true));
         ["wind", "precip"].forEach((k) => {
           const cb = document.querySelector('[data-layer="' + k + '"]');
           if (cb) cb.dispatchEvent(new Event("change"));

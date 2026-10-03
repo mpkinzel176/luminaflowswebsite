@@ -7,7 +7,7 @@
     <meta name="description" content="Interactive 3D digital twin of Kennedy Space Center and Cape Canaveral: live open weather, LuminaBox-tracked TEU containers, and simulated telemetry." />
     <meta name="theme-color" content="#06121f" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="platform.css?v=intro-2" />
+    <link rel="stylesheet" href="platform.css?v=intro-3" />
   </head>
   <body class="twin-page">
     <header class="tp-bar">
@@ -56,6 +56,22 @@
                   <button type="button" data-res="fine" aria-pressed="false">Building-scale<small>~3 m hypothetical</small></button>
                 </div>
                 <p class="seg-note" id="res-note"></p>
+                <div class="ds-box" id="ds-box" hidden>
+                  <label for="ds-size">Box size</label>
+                  <select id="ds-size">
+                    <option value="auto" selected>Auto (follows the view)</option>
+                    <option value="150">150 m</option>
+                    <option value="300">300 m</option>
+                    <option value="600">600 m</option>
+                    <option value="1200">1.2 km</option>
+                    <option value="2400">2.4 km</option>
+                    <option value="5000">5 km</option>
+                    <option value="10000">10 km</option>
+                    <option value="25000">25 km</option>
+                  </select>
+                  <label class="ds-check"><input type="checkbox" id="ds-3d" checked /><span>3D height layers (up over buildings)</span></label>
+                  <button type="button" id="ds-pin" class="ds-pin" aria-pressed="false">Pin box here</button>
+                </div>
                 <div class="wx-grid-key" id="wx-grid-key" aria-label="Forecast grid wind speed colors">
                   <span><i class="wind-bin calm"></i>0-4</span><span><i class="wind-bin breeze"></i>4-8</span><span><i class="wind-bin strong"></i>8-12</span><span><i class="wind-bin severe"></i>12+ m/s</span>
                   <small>Arrow points in wind direction</small>
@@ -98,6 +114,7 @@
                 <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="hormuz" type="button">Strait of Hormuz</button>
               </div>
+              <p class="tracking-note"><b>LuminaBox tracking + sensor package</b> captures <b>location</b> and <b>health</b> for every tracked unit.</p>
               <div class="tech-chips" id="tech-chips"></div>
                 <section class="scenario-intro" aria-live="polite" aria-labelledby="view-intro-title">
                   <p class="eyebrow">This 3D view</p>
@@ -216,11 +233,11 @@
     </main>
 
     <script src="ksc-data.js"></script>
-    <script src="twin3d.js?v=grid-warehouse-2"></script>
-    <script src="lumina-tracking.js"></script>
+    <script src="twin3d.js?v=grid-warehouse-4"></script>
+    <script src="lumina-tracking.js?v=2"></script>
     <script src="twin-intro.js?v=1"></script>
     <script src="hormuz-layers.js?v=2"></script>
-    <script src="downscale.js?v=grid-warehouse-2"></script>
+    <script src="downscale.js?v=3d-1"></script>
     <script src="twin-page.js"></script>
   </body>
 </html>

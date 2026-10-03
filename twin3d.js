@@ -33,11 +33,25 @@
   ];
 
   /* ---------- Weather grid ---------- */
+  // The 5x5 forecast grid is re-pointed in place per region (KSC / Strait of Hormuz).
+  const GRIDS = {
+    ksc: { lat0: 28.47, lon0: -80.77, step: 0.07, cellKm: 7 },
+    hormuz: { lat0: 25.0, lon0: 55.4, step: 0.5, cellKm: 55 },
+  };
+  const HORMUZ_POINT = { name: "Strait of Hormuz", lat: 26.0, lon: 56.4 };
   const grid = [];
-  const STEP = 0.07;
+  let STEP = GRIDS.ksc.step;
+  let region = "ksc";
+  let scnId = "road";
+  const wxStore = {};
   for (let i = 0; i < 5; i++) {
-    for (let j = 0; j < 5; j++) grid.push({ lat: 28.47 + i * STEP, lon: -80.77 + j * STEP });
+    for (let j = 0; j < 5; j++) grid.push({ lat: GRIDS.ksc.lat0 + i * STEP, lon: GRIDS.ksc.lon0 + j * STEP });
   }
+  const gridPoints = (d) => {
+    const out = [];
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) out.push({ lat: d.lat0 + i * d.step, lon: d.lon0 + j * d.step });
+    return out;
+  };
   let wx = null; // { pts:[{wind,dir,gust,precip,temp,code,cloud}], start:Date, source }
   let hour = 0;
   let selected = "all";
@@ -63,12 +77,13 @@
     return best;
   };
 
-  async function loadLive() {
+  async function loadLive(def) {
+    const gp = gridPoints(def || GRIDS.ksc);
     const url =
       "https://api.open-meteo.com/v1/forecast?latitude=" +
-      grid.map((g) => g.lat.toFixed(3)).join(",") +
+      gp.map((g) => g.lat.toFixed(3)).join(",") +
       "&longitude=" +
-      grid.map((g) => g.lon.toFixed(3)).join(",") +
+      gp.map((g) => g.lon.toFixed(3)).join(",") +
       "&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code,cloud_cover" +
       "&wind_speed_unit=ms&forecast_days=3&timezone=UTC";
     const ctl = new AbortController();
@@ -97,17 +112,18 @@
     };
   }
 
-  function demo() {
+  function demo(def) {
+    def = def || GRIDS.ksc;
     const start = new Date(Math.floor(Date.now() / 3600000) * 3600000);
     return {
       source: "demo",
       start,
-      pts: grid.map((g) => {
+      pts: gridPoints(def).map((g) => {
         const o = { wind: [], dir: [], gust: [], precip: [], temp: [], code: [], cloud: [] };
         for (let h = 0; h < N; h++) {
-          const cx = -80.95 + h * 0.013;
-          const cy = 28.42 + h * 0.0045;
-          const d = Math.hypot((g.lon - cx) * 98, (g.lat - cy) * 111);
+          const cx = def.lon0 - 2.6 * def.step + h * 0.186 * def.step;
+          const cy = def.lat0 - 0.71 * def.step + h * 0.064 * def.step;
+          const d = Math.hypot((g.lon - cx) * 98, (g.lat - cy) * 111) * (7 / def.cellKm);
           const near = Math.exp(-((d / 16) ** 2));
           o.precip.push(+(7 * near).toFixed(2));
           o.gust.push(+(7 + 11 * near + 1.5 * Math.sin(h / 5)).toFixed(1));
@@ -144,9 +160,17 @@
     });
   };
 
+  // Where the readout and sparklines sample the forecast for the active view.
+  function readoutPoint() {
+    if (region === "hormuz") return HORMUZ_POINT;
+    if (scnId === "launch") return { ...SITES.lc39a, name: "Launch Complex 39A (launch site)" };
+    return SITES[selected];
+  }
+
   function sparkline(svgId, key, isBars, max) {
     const svg = $(svgId);
-    const idx = nearest(SITES[selected].lat, SITES[selected].lon);
+    const rp = readoutPoint();
+    const idx = nearest(rp.lat, rp.lon);
     const arr = wx.pts[idx][key];
     const hi = Math.max(max, ...arr);
     const W = 240;
@@ -171,7 +195,7 @@
 
   function updateReadout() {
     if (!wx) return;
-    const site = SITES[selected];
+    const site = readoutPoint();
     const p = wx.pts[nearest(site.lat, site.lon)];
     $("#r-site").textContent = site.name;
     $("#r-time").textContent = fmtTime(hour);
@@ -183,7 +207,7 @@
     sparkline("#sp-precip", "precip", true, 2);
 
     const rows = Object.entries(SITES)
-      .filter(([k]) => k !== "all")
+      .filter(([k]) => k !== "all" && region === "ksc")
       .map(([k, s]) => {
         const [st, why] = stateAt(wx.pts[nearest(s.lat, s.lon)], hour);
         return { k, name: s.name, st, why };
@@ -197,7 +221,9 @@
       ? "Weather standoff at " + held.map((r) => r.name).join(", ") + " (" + held[0].why.toLowerCase() + "). Retasking outdoor work to indoor tasks and holding fuel deliveries."
       : watch.length
         ? "Conditions marginal at " + watch.map((r) => r.name).join(", ") + ". Pre-staging tasks for retasking."
-        : "";
+        : region === "hormuz"
+          ? "Regional forecast on ~55 km cells (open model). Wind and rain can affect visibility, sea state, and vessel speed in the strait."
+          : "";
     hourOut.textContent = hour === 0 ? "Now" : "+" + hour + " h";
   }
 
@@ -220,7 +246,7 @@
       const p = wx.pts[i];
       const sp = p.wind[hour];
       const to = (p.dir[hour] + 180) % 360;
-      const len = Math.min(7000, 1200 + sp * 450);
+      const len = Math.min(7000, 1200 + sp * 450) * (STEP / GRIDS.ksc.step);
       const [lat2, lon2] = offset(g.lat, g.lon, to, len);
       const a = arrows[i];
       a.polyline.positions = C.Cartesian3.fromDegreesArrayHeights([g.lon, g.lat, 260, lon2, lat2, 260]);
@@ -483,9 +509,59 @@
       getSelected: () => selected,
       grid,
       nearest,
+      getRegion: () => region,
+      getGridInfo: () => ({ ...GRIDS[region], region }),
     };
     window.dispatchEvent(new CustomEvent("twin:ready", { detail: window.twinApi }));
   }
+
+  function setBadge() {
+    if (!wx) return;
+    badge.textContent = wx.source === "live" ? "Live open data" : "Demo data (feed unavailable)";
+    badge.classList.toggle("live", wx.source === "live");
+  }
+
+  // Re-point the forecast grid at another region and swap in its weather.
+  async function setRegion(name) {
+    if (name === region || !GRIDS[name]) return;
+    region = name;
+    const d = GRIDS[name];
+    STEP = d.step;
+    const H = STEP / 2;
+    gridPoints(d).forEach((pt, i) => {
+      grid[i].lat = pt.lat;
+      grid[i].lon = pt.lon;
+      if (windCells[i]) {
+        const rc = C.Rectangle.fromDegrees(pt.lon - H, pt.lat - H, pt.lon + H, pt.lat + H);
+        windCells[i].rectangle.coordinates = rc;
+        cells[i].rectangle.coordinates = rc;
+      }
+    });
+    if (wxStore[name]) wx = wxStore[name];
+    else {
+      wx = wxStore[name] = demo(d);
+      setBadge();
+      updateScene();
+      loadLive(d)
+        .then((live) => {
+          wxStore[name] = live;
+          if (region === name) {
+            wx = live;
+            setBadge();
+            updateScene();
+          }
+        })
+        .catch(() => {});
+    }
+    setBadge();
+    updateScene();
+  }
+
+  window.addEventListener("twin:scenario", (event) => {
+    scnId = event.detail;
+    if (viewer) setRegion(scnId === "hormuz" ? "hormuz" : "ksc");
+    updateReadout();
+  });
 
   function applyLayers() {
     document.querySelectorAll("[data-layer]").forEach((cb) => {
@@ -605,16 +681,16 @@
       updateReadout();
       return;
     }
-    wx = (await weather) || demo();
-    badge.textContent = wx.source === "live" ? "Live open data" : "Demo data (feed unavailable)";
-    if (wx.source === "live") badge.classList.add("live");
+    wx = wxStore.ksc = (await weather) || demo();
+    setBadge();
     hourInput.max = N - 1;
     try {
       await initViewer();
     } catch (e) {
       box.querySelectorAll(".cesium-widget-errorPanel, .cesium-viewer").forEach((n) => n.remove());
       box.appendChild(loading);
-      loading.textContent = "3D view could not start. Enable hardware acceleration in your browser settings, update your graphics drivers, or try another browser.";
+      console.error("Cesium viewer init failed", e);
+      loading.textContent = "3D view could not start. Enable hardware acceleration in your browser settings, update your graphics drivers, or try another browser." + (e && e.message ? " (" + String(e.message).split("\n")[0] + ")" : "");
       updateReadout();
     }
   }
