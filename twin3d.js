@@ -408,19 +408,40 @@
 
   async function initViewer() {
     C = window.Cesium;
-    viewer = new C.Viewer(box, {
-      baseLayer: new C.ImageryLayer(new C.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/", maximumLevel: 19 })),
-      baseLayerPicker: false,
-      geocoder: false,
-      homeButton: false,
-      sceneModePicker: false,
-      navigationHelpButton: false,
-      animation: false,
-      timeline: false,
-      fullscreenButton: false,
-      infoBox: false,
-      selectionIndicator: false,
-    });
+    const makeViewer = (extra) =>
+      new C.Viewer(box, {
+        baseLayer: new C.ImageryLayer(new C.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/", maximumLevel: 19 })),
+        baseLayerPicker: false,
+        geocoder: false,
+        homeButton: false,
+        sceneModePicker: false,
+        navigationHelpButton: false,
+        animation: false,
+        timeline: false,
+        fullscreenButton: false,
+        infoBox: false,
+        selectionIndicator: false,
+        showRenderLoopErrors: false,
+        ...extra,
+      });
+    // Some GPUs/drivers fail WebGL2 or MSAA setup; retry with progressively safer contexts.
+    const attempts = [
+      {},
+      { msaaSamples: 1 },
+      { msaaSamples: 1, contextOptions: { requestWebgl1: true, webgl: { failIfMajorPerformanceCaveat: false } } },
+    ];
+    let lastErr;
+    for (const extra of attempts) {
+      try {
+        box.querySelectorAll(".cesium-widget-errorPanel, .cesium-viewer").forEach((n) => n.remove());
+        viewer = makeViewer(extra);
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (lastErr) throw lastErr;
     const base = viewer.imageryLayers.get(0);
     base.brightness = 0.62;
     base.contrast = 1.15;
@@ -591,7 +612,9 @@
     try {
       await initViewer();
     } catch (e) {
-      loading.textContent = "3D view needs WebGL, which is unavailable in this browser.";
+      box.querySelectorAll(".cesium-widget-errorPanel, .cesium-viewer").forEach((n) => n.remove());
+      box.appendChild(loading);
+      loading.textContent = "3D view could not start. Enable hardware acceleration in your browser settings, update your graphics drivers, or try another browser.";
       updateReadout();
     }
   }
