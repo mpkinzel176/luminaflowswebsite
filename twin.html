@@ -3,18 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lumina Flows | Kennedy Space Center digital twin</title>
-    <meta name="description" content="Interactive 3D digital twin of Kennedy Space Center and Cape Canaveral: live open weather, LuminaBox-tracked TEU containers, and simulated telemetry." />
+    <title>Lumina Flows | Digital twin</title>
+    <meta name="description" content="Explore Lumina Flows digital twins, including an illustrative U.S. LuminaBox sensor-network concept and the Kennedy Space Center." />
     <meta name="theme-color" content="#06121f" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="platform.css?v=intro-3" />
+    <link rel="stylesheet" href="platform.css?v=network-shading-2" />
   </head>
   <body class="twin-page">
     <header class="tp-bar">
       <a class="tp-brand" href="index.html" target="_top" aria-label="Lumina Flows home"><img src="assets/lumina-flows-logo-cropped.png" alt="Lumina Flows" /></a>
       <div class="tp-title">
-        <b>Kennedy Space Center digital twin</b>
-        <span>Live open weather &middot; simulated LuminaBox telemetry &middot; OpenStreetMap geometry</span>
+        <b>LuminaBox digital twin</b>
+        <span>Illustrative U.S. sensor network &middot; Kennedy Space Center &middot; simulated telemetry</span>
       </div>
       <div class="tp-actions">
         <button type="button" id="twin-copy" class="see-model">Copy link to this view</button>
@@ -91,6 +91,7 @@
                 <label><input type="checkbox" data-layer="radar" /><span>NOAA radar (latest)</span></label>
                 <label><input type="checkbox" data-layer="cad" checked /><span>Facility 3D massing</span></label>
                 <label><input type="checkbox" data-layer="assets" checked /><span>LuminaBox tracking</span></label>
+                <label><input type="checkbox" data-layer="sensors" checked /><span>U.S. sensor sites + apertures</span></label>
               </div>
 
               <h3 class="side-title">Connectivity</h3>
@@ -106,15 +107,16 @@
                 <span id="stage-site">Site overview</span>
                 <span class="console-tag" id="data-badge">Loading data…</span>
               </div>
-              <div class="scenario-tabs" role="tablist" aria-label="LuminaBox tracking scenarios">
-                <span class="tabs-label">LuminaBox tracking</span>
+              <div class="scenario-tabs" role="tablist" aria-label="Digital twin scenarios">
+                <span class="tabs-label">Digital twin views</span>
                 <button class="stab is-active" role="tab" aria-selected="true" data-scn="road" type="button">Road transit</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="warehouse" type="button">Warehouse</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="shipping" type="button">Shipping to Cape</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="launch" type="button">Launch &rarr; Japan</button>
                 <button class="stab" role="tab" aria-selected="false" data-scn="hormuz" type="button">Strait of Hormuz</button>
+                <button class="stab" role="tab" aria-selected="false" data-scn="us-network" type="button">U.S. sensor network</button>
               </div>
-              <p class="tracking-note"><b>LuminaBox tracking + sensor package</b> captures <b>location</b> and <b>health</b> for every tracked unit.</p>
+              <p class="tracking-note" id="tracking-note"><b>LuminaBox tracking + sensor package</b> captures <b>location</b> and <b>health</b> for every tracked unit.</p>
               <div class="tech-chips" id="tech-chips"></div>
                 <section class="scenario-intro" aria-live="polite" aria-labelledby="view-intro-title">
                   <p class="eyebrow">This 3D view</p>
@@ -123,7 +125,7 @@
                   <p class="scenario-intro-action" id="view-intro-action">Choose a view above, then try its controls below the map.</p>
                 </section>
               <div class="cesium-wrap">
-                <div id="cesium" class="cesium-box" aria-label="Interactive 3D map of the Kennedy Space Center area with weather overlays and LuminaBox-tracked TEU containers">
+                <div id="cesium" class="cesium-box" aria-label="Interactive 3D digital twin map showing Kennedy Space Center or the illustrative U.S. LuminaBox sensor network">
                   <div class="cesium-loading" id="cesium-loading">Loading 3D map…</div>
                 </div>
                 <div class="ds-overlay" id="ds-overlay" hidden>
@@ -189,10 +191,43 @@
                 <output id="hour-out">Now</output>
                 <button id="play" type="button" aria-pressed="false">Play</button>
               </div>
+              <div class="stage-controls network-controls" id="ctl-network" hidden>
+                <label for="sensor-event">Illustrative event</label>
+                <select id="sensor-event">
+                  <option value="highspeed">Hypersonic test-track concept</option>
+                  <option value="launch" selected>Rocket launch</option>
+                  <option value="aircraft">Aircraft corridor</option>
+                </select>
+                <button id="sensor-replay" type="button">Replay synthetic trace</button>
+                <output id="sensor-status" aria-live="polite">Concept view · no live detections</output>
+              </div>
               <p class="map-hint">Drag to orbit · scroll to zoom · right-drag or Ctrl-drag to tilt</p>
             </div>
 
             <div class="twin-readout" aria-live="polite">
+              <section class="network-readout" id="network-readout" hidden>
+                <h3 class="side-title">U.S. sensor-network concept</h3>
+                <p class="readout-site">Illustrative planning layout</p>
+                <dl class="readout">
+                  <div><dt>Concept sites</dt><dd>26</dd></div>
+                  <div><dt>Event track</dt><dd id="network-event-name">None</dd></div>
+                  <div><dt>Propagation speed</dt><dd>20× sound · 6.86 km/s</dd></div>
+                  <div><dt>Active sensors</dt><dd id="network-active-count">0 / 26</dd></div>
+                  <div><dt>Strongest sensor</dt><dd id="network-strongest">—</dd></div>
+                  <div><dt>Combined network signal</dt><dd id="network-group-signal">—</dd></div>
+                  <div><dt>Replay status</dt><dd id="network-replay-state">Standby</dd></div>
+                </dl>
+                <div class="network-signal-chart">
+                  <div><span class="spark-title">Sensor signals (shaded) · combined network (line)</span><output id="network-group-out">0.00</output></div>
+                  <svg id="network-group-chart" viewBox="0 0 240 52" role="img" aria-label="Illustrative individual LuminaBox sensor signals shaded beneath the combined network signal during the synthetic rocket replay">
+                    <line x1="0" y1="49" x2="240" y2="49"></line>
+                    <g id="network-sensor-shading"></g>
+                    <path id="network-group-path" d="M0 49 L240 49"></path>
+                  </svg>
+                </div>
+                <p class="network-activation-note"><i aria-hidden="true"></i>Green map markers indicate sensors activated after the modeled signal arrival.</p>
+                <p class="network-disclaimer">Concept visualization only. Sensor activation is delayed by illustrative signal travel time at 20× the nominal speed of sound (about 6.86 km/s); replay time is compressed. Individual traces and the combined network signal are synthetic relative values, not measured data, a sensing-range model, or validated detections. Aperture symbols are not to scale. Site locations and event traces are illustrative, not deployed infrastructure or measured data.</p>
+              </section>
               <section class="lb-feed" id="lb-feed" aria-live="polite">
                 <h3 class="side-title"><span class="lb-dot"></span>LuminaBox feed</h3>
                 <div id="lb-feed-body"></div>
@@ -225,7 +260,7 @@
                 Weather: Open-Meteo open forecast API (open national models). Radar: NOAA MRMS. Imagery: OpenStreetMap
                 contributors. Facility footprints and heights are approximate massing for concept demonstration, not
                 survey or CAD data. LuminaBox telemetry, container contents, the warehouse, shipping routes, the
-                satellite constellation, and the Japan delivery trajectory are simulated or approximate, for illustration. Status thresholds are illustrative. Not for operational use.
+                satellite constellation, Japan delivery trajectory, and U.S. sensor-network sites and event replays are simulated or approximate, for illustration. Network apertures are symbolic and no detection performance is implied. Status thresholds are illustrative. Not for operational use.
               </p>
             </div>
           </div>
@@ -235,6 +270,7 @@
     <script src="ksc-data.js"></script>
     <script src="twin3d.js?v=grid-warehouse-4"></script>
     <script src="lumina-tracking.js?v=2"></script>
+    <script src="us-network.js?v=4"></script>
     <script src="twin-intro.js?v=1"></script>
     <script src="hormuz-layers.js?v=2"></script>
     <script src="downscale.js?v=3d-1"></script>

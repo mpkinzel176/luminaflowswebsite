@@ -28,6 +28,11 @@
       "This illustrative scenario shows tanker traffic and simulated navigation disruption. LuminaBox compares a fused asset track with GNSS reports; this is not live vessel or threat data.",
       "Toggle the maritime layers below the map. Try the interference and traffic controls, or select Stall a tanker to see a queue form.",
     ],
+    "us-network": [
+      "Explore a U.S. sensor-network concept",
+      "Illustrative LuminaBox sites are distributed across the United States. Replay synthetic tracks to compare individual sensor signals with the combined network signal.",
+      "This is a concept visualization, not a deployed network or live detection system. All displayed sensor values and event tracks are synthetic.",
+    ],
   };
 
   function render(scenario) {

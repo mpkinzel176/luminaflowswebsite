@@ -1,5 +1,5 @@
 /* Standalone digital-twin page: share a view with a link.
-   Query parameters: scn (road|warehouse|shipping|launch), site (all|vab|lc39a|lc39b|slc40),
+   Query parameters: scn (road|warehouse|shipping|launch|us-network), site (all|vab|lc39a|lc39b|slc40),
    res (coarse|fine), link (all|rf|cell|sat), spd + dir (what-if wind), hour (0-47), embed=1. */
 (function () {
   "use strict";

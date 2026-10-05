@@ -2237,12 +2237,20 @@
       hormuz: { title: "LuminaBox tanker fleet", sub: "Strait of Hormuz \u00B7 contested navigation", chip: "Time-lapse \u00D7360 \u00B7 simulated \u00B7 notional interference", follow: "Follow selected tanker (scroll to zoom)" },
       shipping: { title: "LuminaBox fleet", sub: "Tracking " + SHIP_TEUS + " TEUs \u00B7 3 routes to Cape Canaveral", chip: "Time-lapse \u00B7 simulated \u00B7 SATCOM at sea", follow: null },
       launch: { title: "LuminaBox LB-201–206", sub: "Tracking 6 TEUs · Cape → Japan", chip: "Notional trajectory · simulated", follow: "Director camera (scroll to zoom)" },
+      "us-network": { title: "U.S. sensor-network concept", sub: "26 illustrative LuminaBox sites · not deployed infrastructure", chip: "Synthetic event replay · no live detections", follow: null },
     };
     const ctlForecast = $("#ctl-forecast");
+    const ctlNetwork = $("#ctl-network");
     const ctlMission = $("#ctl-mission");
     const ctlHz = $("#ctl-hormuz");
     const phaseRow = $("#phase-row");
     const wxReadout = $("#wx-readout");
+    const networkReadout = $("#network-readout");
+    const lbFeed = $("#lb-feed");
+    const trackingNote = $("#tracking-note");
+    const techChips = $("#tech-chips");
+    const stageSite = $("#stage-site");
+    const dataBadge = $("#data-badge");
 
     phaseRow.innerHTML = PHASES.map((p, i) => '<li><button type="button" data-ph="' + i + '">' + (i + 1) + ". " + p.name + "</button></li>").join("");
 
@@ -2269,7 +2277,7 @@
         hz.follow = false;
         releaseCamera();
       }
-      if (prev === "launch" || prev === "shipping" || prev === "hormuz") viewer.scene.screenSpaceCameraController.maximumZoomDistance = 160000;
+      if (prev === "launch" || prev === "shipping" || prev === "hormuz" || prev === "us-network") viewer.scene.screenSpaceCameraController.maximumZoomDistance = 160000;
       if (prev === "road" && cam.roadFollow) {
         cam.roadFollow = false;
         releaseCamera();
@@ -2278,6 +2286,19 @@
       active = id;
       window.dispatchEvent(new CustomEvent("twin:scenario", { detail: id }));
       if (typeof renderTech === "function") renderTech(id);
+      stageSite.textContent = id === "us-network" ? "U.S. sensor-network concept" : SITES[api.getSelected()].name;
+      if (dataBadge) {
+        if (id === "us-network") {
+          dataBadge.textContent = "Concept simulation · no live detections";
+          dataBadge.classList.remove("live");
+        } else {
+          const wx = api.getWx();
+          if (wx) {
+            dataBadge.textContent = wx.source === "live" ? "Live open data" : "Demo data (feed unavailable)";
+            dataBadge.classList.toggle("live", wx.source === "live");
+          }
+        }
+      }
       tabs.forEach((t) => {
         const on = t.dataset.scn === id;
         t.classList.toggle("is-active", on);
@@ -2292,17 +2313,27 @@
       followBtn.hidden = !m.follow;
       followBtn.textContent = m.follow || "";
       followBtn.setAttribute("aria-pressed", id === "launch" ? "true" : "false");
+      overlay.hidden = id === "us-network";
+      lbFeed.hidden = id === "us-network";
+      networkReadout.hidden = id !== "us-network";
+      trackingNote.hidden = id === "us-network";
+      techChips.hidden = id === "us-network";
       ctlForecast.hidden = !(id === "road" || id === "launch" || id === "hormuz");
+      ctlNetwork.hidden = id !== "us-network";
       if (ctlHz) ctlHz.hidden = id !== "hormuz";
       ctlMission.hidden = id !== "launch";
       phaseRow.hidden = id !== "launch";
-      wxReadout.hidden = id === "shipping";
+      wxReadout.hidden = id === "shipping" || id === "us-network";
       // weather overlays: hidden on the open-ocean shipping view (no forecast grid there); launch uses the KSC grid, Hormuz its own
       if (id === "shipping") {
         layers.wind.forEach((e) => (e.show = false));
         layers.precip.forEach((e) => (e.show = false));
       }
-      if (id === "launch" || id === "shipping" || id === "hormuz") {
+      if (id === "us-network") {
+        layers.wind.forEach((e) => (e.show = false));
+        layers.precip.forEach((e) => (e.show = false));
+      }
+      if (id === "launch" || id === "shipping" || id === "hormuz" || id === "us-network") {
         layers.rocket.forEach((e) => (e.show = id !== "launch"));
         viewer.scene.screenSpaceCameraController.maximumZoomDistance = Infinity;
       }
@@ -2331,6 +2362,11 @@
         viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(26.0, 56.4, 0), 1), { duration: 2.2, offset: new C.HeadingPitchRange(0, C.Math.toRadians(-82), 300000) });
       } else if (id === "shipping") {
         flyShipOverview(2.4);
+      } else if (id === "us-network") {
+        viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cart(39, -98, 0), 1), {
+          duration: 2.2,
+          offset: new C.HeadingPitchRange(0, C.Math.toRadians(-76), 7.5e6),
+        });
       } else {
         viewer.camera.flyToBoundingSphere(new C.BoundingSphere(veh.pos, 1), {
           duration: 1.6,
@@ -2356,7 +2392,7 @@
       else if (active === "warehouse") tickWarehouse();
       else if (active === "shipping") tickShipping();
       else if (active === "hormuz") tickHormuz();
-      else tickLaunch();
+      else if (active === "launch") tickLaunch();
     }
 
     tabs.forEach((t) => t.addEventListener("click", () => setScenario(t.dataset.scn)));
@@ -2471,6 +2507,7 @@
       hormuz: [["LuminaBox sensing", "luminabox.html#luminabox"], ["Contested tracking", "luminabox.html#contested"], ["Connectivity", "luminabox.html#arch"]],
       shipping: [["Logistics", "luminabox.html#logistics"], ["Connectivity", "luminabox.html#arch"], ["Digital thread", "digital-thread.html"]],
       launch: [["Real-time CFD", "cfd.html"], ["Connectivity", "luminabox.html#arch"], ["Digital thread", "digital-thread.html"]],
+      "us-network": [["LuminaBox sensing", "luminabox.html#luminabox"], ["Counter-UAS sensing", "counter-uas.html"], ["Digital thread", "digital-thread.html"]],
     };
     function renderTech(id) {
       const el = $("#tech-chips");
@@ -2577,7 +2614,7 @@
       applyVisibility();
     }, 400);
     setInterval(() => {
-      $("#lb-feed-body").innerHTML = active === "road" ? feedRoad() : active === "warehouse" ? feedWarehouse() : active === "shipping" ? feedShipping() : active === "hormuz" ? feedHormuz() : feedLaunch();
+      $("#lb-feed-body").innerHTML = active === "road" ? feedRoad() : active === "warehouse" ? feedWarehouse() : active === "shipping" ? feedShipping() : active === "hormuz" ? feedHormuz() : active === "launch" ? feedLaunch() : "";
     }, 250);
 
     overlay.hidden = false;

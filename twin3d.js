@@ -60,7 +60,7 @@
   const arrows = [];
   const cells = [];
   const windCells = [];
-  const layers = { wind: [], precip: [], cad: [], assets: [], rocket: [] };
+  const layers = { wind: [], precip: [], cad: [], assets: [], rocket: [], sensors: [] };
   let forecastMode = "coarse";
   let radarLayer = null;
 
@@ -570,7 +570,7 @@
       if (k === "radar") {
         if (radarLayer) radarLayer.show = on;
       } else if (k !== "precip" && layers[k]) {
-        layers[k].forEach((e) => (e.show = on && !(k === "wind" && forecastMode === "fine")));
+        layers[k].forEach((e) => (e.show = on && !(k === "wind" && forecastMode === "fine") && (!e._cond || e._cond())));
       }
     });
   }
